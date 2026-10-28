@@ -1,0 +1,208 @@
+@startuml
+
+skinparam MaxMessageSize 150
+actor "Пользователь" as user #Business
+box frontend #Application
+    participant "User GUI" as ugui #TECHNOLOGY
+end box
+box backend #Application
+    participant "guiGateway" as ugate #TECHNOLOGY
+    participant "cmsService" as cms #TECHNOLOGY
+    database "cmsDB" as cmdb
+    participant "cmsService" as cms #TECHNOLOGY
+end box
+actor "Доставка" as del #PHYSICAL
+
+ref over user: UC1 Просмотр товаров
+
+ == UC2.1 Добавление товара в корзину  ==
+    autonumber 1
+    
+    
+    user -> ugui : Добавление выбранных товаров в корзину
+    activate ugui
+    activate ugate
+    ugui -> ugate : POST /api/v1/cart/add{productid, quantity}
+    
+    activate cms
+    ugate -> cms : POST /api/v1/cart/add
+    alt Если это первый товар в корзине для пользователя
+        activate cmdb
+        cms -> cmdb : POST /api/v1/cart/create{uid} Создать корзину
+        cmdb -> cms : 200 OK
+        deactivate cmdb
+    end
+    cms -> cmdb : POST /api/v1/cart/add{productid, quantity}
+    cmdb -> cms : 200 OK
+    cms -> ugate : 200 ОК товары добавлены
+    deactivate cms
+    ugate -> ugui : 200 OK (Корзина обновлена)
+    deactivate ugate
+    
+    
+
+
+ == UC2.2 Действия с параметрами списка товаров в корзине  ==
+    
+    user -> ugui : Переход в корзину
+    
+    ugui -> ugate : GET /api/v1/cart/view{uid}
+    activate ugate
+    activate cms
+    ugate -> cms : GET /api/v1/cart/view{uid}
+    activate cmdb
+    cms -> cmdb : GET /api/v1/cart/view{uid}
+    cmdb -> cms : 200 OK (Данные корзины)
+    deactivate cmdb
+    cms -> ugate : 200 OK (Данные о товарах в корзине)
+    deactivate cms
+    ugate -> ugui : 200 OK (Данные корзины)
+    deactivate ugate
+    user -> ugui : Выбор чекбоксами нужных товаров для оформления заказа
+    alt Просмотр карточки добавленного товара
+        user -> ugui : Нажатие на карточку товара
+        ref over ugui: UC1.4 Просмотр карточки товара
+        ref over ugui : UC2.1 Шаг 10 Переход в корзину
+    end
+    alt Изменение количества товаров
+        user -> ugui : Изменение количества товаров
+        ugui -> ugate : PATCH /api/v1/cart/items/{itemId}
+        activate ugate
+        ugate -> cms : PATCH /api/v1/cart/items/{itemId}
+        activate cms
+        cms -> cmdb : PATCH /api/v1/cart/items/{itemId}{quantity}
+        cmdb -> cms : 200 OK (Товар обновлен)
+        deactivate cmdb
+        cms -> ugate : 200 OK (Товар обновлен)
+        deactivate cms
+        ugate -> ugui : 200 OK (Товар обновлен)
+        deactivate ugate
+    end
+    alt Удаление товара
+        user -> ugui : Удаление товара
+        ugui -> ugate : DELETE /api/v1/cart/items/{itemId}
+        activate ugate
+        ugate -> cms : DELETE /api/v1/cart/items/{itemId}
+        activate cms
+        cms -> cmdb : DELETE /api/v1/cart/items/{itemId}
+        cmdb -> cms : 200 OK (Товар удален)
+        deactivate cmdb
+        cms -> ugate : 200 OK (Товар удален)
+        deactivate cms
+        ugate -> ugui : 200 OK (Товар удален)
+        deactivate ugate
+    end
+    alt Выбор всех товаров
+        user -> ugui : Выбор всех товаров
+        ugui -> ugate : PATCH /api/v1/cart/items/{Все itemId}
+        activate ugate
+        ugate -> cms : PATCH /api/v1/cart/items/{Все itemId}
+        activate cms
+        cms -> cmdb : PATCH /api/v1/cart/items/{Все itemId}
+        cmdb -> cms : 200 OK (Все товары в корзине)
+        deactivate cmdb
+        cms -> ugate : 200 OK (Все товары в корзине)
+        deactivate cms
+        ugate -> ugui : 200 OK (Все товары в корзине)
+        deactivate ugate
+    end
+    
+    
+
+== UC2 Заказ товара ==
+    
+    
+    user -> ugui : Проверка итоговой суммы и нажатие кнопки Оформления заказа
+    
+    ugui -> ugate : POST /api/v1/orders/create{itemId Из корзины}
+    activate ugate
+    ugate -> ugate : Сопоставление itemId и productid
+    ugate -> cms : POST /api/v1/orders/create{данные пользователя + данные товаров}
+    activate cms
+    cms -> cmdb : POST /api/v1/orders/create
+    cmdb -> cms : 200 OK (Заказ создан)
+    deactivate cmdb
+    cms -> ugate : 200 OK (Заказ создан)
+    ugate -> ugui : 200 OK (Заказ создан)
+    deactivate ugate
+    cms -> cmdb : PATCH /api/v1/cart/update/{id} Убрать из корзины заказанные товары
+    deactivate cms
+    
+
+ == UC2.3 Ввод и проверка данных клиента  ==
+    
+    
+    user -> ugui : Ввод и проверка данных клиента
+    activate ugate
+    ugui -> ugate : POST /api/v1/checkout/validate{userid}
+
+    ugate -> cms : POST /api/v1/users/validate{userid}
+    activate cms
+    cms -> cmdb : POST /api/v1/users/{userid} // Запрос данных пользователя
+    cmdb -> cms : 200 OK (Данные пользователя)
+    deactivate cmdb
+    cms -> cmdb : PATCH /api/v1/orders/update{orderid, orderstate} // Обновить статус заказа
+    cmdb -> cms  : 200 OK (стаус обновлен)
+    deactivate cmdb
+    deactivate cms
+    deactivate ugate
+    
+    alt Изменение данных пользователя
+        user -> ugui : Изменение данных пользователя
+        ugui -> ugate : PUT /api/v1/users/{userId}
+        activate ugate
+        ugate -> cms : PUT /api/v1/users/{userId}{name, phone, email}
+        activate cms
+        cms -> cmdb : PUT /api/v1/users/{userId}
+        cmdb -> cms : 200 OK (Данные обновлены)
+        deactivate cmdb
+        cms -> ugate : 200 OK (Данные обновлены)
+        deactivate cms
+        ugate -> ugui : 200 OK (Результат обновления)
+        deactivate ugate
+    else
+        ugate -> ugui : 200 OK (Результат проверки)
+        deactivate ugate
+    end
+    
+ == UC2.4 Оплата заказа  ==
+    
+    activate ugui
+    user -> ugui : Оплата заказа
+    activate ugate
+    ugui -> ugate : POST /api/v1/checkout/payment
+    activate cms
+    ugate -> cms : POST /api/v1/payments{orderId, paymentMethod}
+    ref over cms : Работа платежного шлюза
+    ref over user : Подтверждение оплаты на стороне пользователя (sms)
+    cms -> ugate : 200 OK (Подтверждение оплаты)
+    ugate -> ugui : 200 OK (Подтверждение оформления заказа)
+    cms -> cmdb : PATCH /api/v1/orders/update{orderid, orderstate} // Обновить статус заказа
+    cmdb -> cms  : 200 OK (стаус обновлен)
+    deactivate cmdb
+    cms  -> ugate : PATCH /api/v1/orders/update{orderid, orderstate} // Заказ доставляется
+    deactivate cms
+    ugate -> ugui : Экран подтверждения выполнения заказа
+    deactivate ugate
+
+ ==  UC2.5 Доставка  == 
+    activate cms
+    cms -> del : Передать заказ
+    deactivate cms
+    activate del
+    del -> user : Доставить товар
+    deactivate del
+    activate cms
+    del -> cms : Подтвердить доставку
+    cms -> cmdb : PATCH /api/v1/orders/update{orderid, orderstate} // Обновить статус заказа
+    cmdb -> cms  : 200 OK (стаус обновлен)
+    deactivate cmdb
+    cms  -> ugate : PATCH /api/v1/orders/update{orderid, orderstate} // Заказ завершен
+    deactivate cms
+    activate ugate
+    ugate -> ugui : Экран завершения заказа
+    deactivate ugui
+    deactivate ugate
+    
+autonumber stop
+@enduml

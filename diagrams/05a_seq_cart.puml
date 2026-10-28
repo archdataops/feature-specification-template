@@ -1,0 +1,120 @@
+@startuml 05a_seq_cart
+title UC2.1–UC2.2. Корзина: добавление, просмотр, изменение
+skinparam MaxMessageSize 160
+skinparam sequenceMessageAlign center
+autonumber "<b>[0]"
+
+actor "Покупатель" as user #Business
+box "Клиент" #Application
+    participant "Web GUI /\nMobile App" as ugui #Technology
+end box
+box "Backend" #Application
+    participant "guiGateway" as ugate #Technology
+    participant "cmsService" as cms #Technology
+    database "cmsDB" as cmdb #Technology
+end box
+
+ref over user, ugui : UC1 Просмотр товаров (предусловие)
+
+== UC2.1 Добавление товара в корзину ==
+user -> ugui : Нажимает «В корзину»
+ugui -> ugate : POST /api/v1/cart/items\n{productId, quantity}
+activate ugate
+ugate -> ugate : Проверка JWT
+alt Токен отсутствует или истёк
+    ugate --> ugui : 401 UNAUTHORIZED
+    ugui --> user : Переход на страницу входа
+else Токен валиден
+    ugate -> cms : POST /api/v1/cart/items\n{userId, productId, quantity}
+    activate cms
+    cms -> cmdb : SELECT product, stock\nWHERE product_id = :productId
+    activate cmdb
+    cmdb --> cms : Товар и остаток
+    deactivate cmdb
+    alt Товар не найден
+        cms --> ugate : 404 PRODUCT_NOT_FOUND
+        ugate --> ugui : 404 PRODUCT_NOT_FOUND
+        ugui --> user : «Товар больше не продаётся»
+    else Количество в корзине станет больше 10 (BR-01)
+        cms --> ugate : 422 QUANTITY_LIMIT_EXCEEDED
+        ugate --> ugui : 422 QUANTITY_LIMIT_EXCEEDED
+        ugui --> user : «Не больше 10 штук одного товара»
+    else Недостаточно товара на складе (BR-02)
+        cms --> ugate : 409 OUT_OF_STOCK\n{available}
+        ugate --> ugui : 409 OUT_OF_STOCK
+        ugui --> user : «Доступно только N шт.»
+    else Проверки пройдены
+        opt У покупателя ещё нет корзины
+            cms -> cmdb : INSERT cart (user_id)
+        end
+        cms -> cmdb : INSERT cart_item\nили UPDATE quantity (FR-02)
+        cmdb --> cms : OK
+        cms --> ugate : 201 Created {cart}
+        ugate --> ugui : 201 Created {cart}
+        ugui --> user : Счётчик корзины обновлён
+    end
+    deactivate cms
+end
+deactivate ugate
+
+== UC2.2 Действия со списком товаров в корзине ==
+user -> ugui : Открывает корзину
+ugui -> ugate : GET /api/v1/cart
+activate ugate
+ugate -> cms : GET /api/v1/cart {userId}
+activate cms
+cms -> cmdb : SELECT cart, cart_items,\nактуальные цены и остатки
+cmdb --> cms : Данные корзины
+cms --> ugate : 200 OK {cart}\n(у позиций признаки priceChanged, inStock)
+deactivate cms
+ugate --> ugui : 200 OK {cart}
+deactivate ugate
+ugui --> user : Список позиций, итог по выбранным (FR-07)
+
+alt Изменение количества
+    user -> ugui : Меняет количество
+    ugui -> ugate : PATCH /api/v1/cart/items/{itemId}\n{quantity}
+    activate ugate
+    ugate -> cms : PATCH /api/v1/cart/items/{itemId}
+    activate cms
+    alt Позиция не найдена или чужая (BR-08)
+        cms --> ugate : 404 CART_ITEM_NOT_FOUND
+        ugate --> ugui : 404 CART_ITEM_NOT_FOUND
+        ugui --> user : Корзина перезагружается
+    else quantity > 10 (BR-01) или больше остатка (BR-02)
+        cms --> ugate : 422 QUANTITY_LIMIT_EXCEEDED /\n409 OUT_OF_STOCK
+        ugate --> ugui : Ошибка
+        ugui --> user : Количество возвращается к прежнему,\nподсказка у поля
+    else OK
+        cms -> cmdb : UPDATE cart_item SET quantity
+        cms --> ugate : 200 OK {cart}
+        ugate --> ugui : 200 OK {cart}
+    end
+    deactivate cms
+    deactivate ugate
+else Удаление позиции
+    user -> ugui : Нажимает «Удалить»
+    ugui -> ugate : DELETE /api/v1/cart/items/{itemId}
+    activate ugate
+    ugate -> cms : DELETE /api/v1/cart/items/{itemId}
+    activate cms
+    cms -> cmdb : DELETE cart_item
+    cms --> ugate : 204 No Content
+    deactivate cms
+    ugate --> ugui : 204 No Content
+    deactivate ugate
+else Выбор позиций / «Выбрать всё»
+    user -> ugui : Отмечает позиции
+    ugui -> ugate : PATCH /api/v1/cart/selection\n{selected, itemIds?}
+    activate ugate
+    ugate -> cms : PATCH /api/v1/cart/selection
+    activate cms
+    cms -> cmdb : UPDATE cart_item SET selected
+    cms --> ugate : 200 OK {cart}
+    deactivate cms
+    ugate --> ugui : 200 OK {cart}
+    deactivate ugate
+end
+
+autonumber stop
+@enduml

@@ -1,0 +1,142 @@
+@startuml 05c_seq_payment_delivery
+title UC2.4–UC2.5. Оплата и доставка заказа
+skinparam MaxMessageSize 170
+skinparam sequenceMessageAlign center
+autonumber "<b>[0]"
+
+actor "Покупатель" as user #Business
+box "Клиент" #Application
+    participant "Web GUI /\nMobile App" as ugui #Technology
+end box
+box "Backend" #Application
+    participant "guiGateway" as ugate #Technology
+    participant "cmsService" as cms #Technology
+    database "cmsDB" as cmdb #Technology
+end box
+box "Внешние системы" #Physical
+    participant "paymentGateway\n(платёжный шлюз)" as pay #Physical
+    participant "deliveryService\n(служба доставки)" as del #Physical
+end box
+
+== UC2.4 Оплата заказа ==
+user -> ugui : Нажимает «Перейти к оплате»,\nвыбирает карту или СБП
+ugui -> ugate : POST /api/v1/orders/{orderId}/payment\nIdempotency-Key: <uuid>\n{method}
+activate ugate
+ugate -> cms : POST /api/v1/orders/{orderId}/payment
+activate cms
+cms -> cmdb : SELECT order
+alt Срок оплаты истёк (BR-05)
+    cms --> ugate : 409 ORDER_EXPIRED
+    ugate --> ugui : 409 ORDER_EXPIRED
+    ugui --> user : «Заказ отменён, товары\nвернулись в продажу»
+else Заказ уже оплачен или отменён (BR-09)
+    cms --> ugate : 409 INVALID_STATUS_TRANSITION
+    ugate --> ugui : 409 INVALID_STATUS_TRANSITION
+    ugui --> user : Актуальный статус заказа
+else Данные покупателя не проверены
+    cms --> ugate : 422 CHECKOUT_DATA_MISSING
+    ugate --> ugui : 422 CHECKOUT_DATA_MISSING
+    ugui --> user : Возврат на шаг UC2.3
+else Можно оплачивать
+    cms -> pay : POST /v1/payments\n{amount, currency, orderId, returnUrl}\nIdempotence-Key: <paymentAttemptId>
+    activate pay
+    alt Шлюз не ответил за 10 с
+        pay --[#red]x cms : timeout
+        cms --> ugate : 504 PAYMENT_PROVIDER_TIMEOUT
+        ugate --> ugui : 504 PAYMENT_PROVIDER_TIMEOUT
+        ugui --> user : «Не удалось начать оплату,\nпопробуйте ещё раз»
+    else Шлюз вернул ошибку 5xx
+        pay --> cms : 5xx
+        cms --> ugate : 502 PAYMENT_PROVIDER_ERROR
+        ugate --> ugui : 502 PAYMENT_PROVIDER_ERROR
+        ugui --> user : «Не удалось начать оплату,\nпопробуйте ещё раз»
+    else Платёж создан
+        pay --> cms : 200 OK {paymentId,\nstatus: pending, confirmationUrl}
+        cms -> cmdb : INSERT payment (status = pending)\nUPDATE order SET status = awaiting_payment
+        cms --> ugate : 201 Created\n{paymentId, confirmationUrl}
+        ugate --> ugui : 201 Created
+        ugui -> pay : Редирект на confirmationUrl
+        user -> pay : Вводит данные карты /\nподтверждает в банке
+    end
+    deactivate pay
+end
+deactivate cms
+deactivate ugate
+
+== Результат оплаты (уведомление от шлюза) ==
+pay -> ugate : POST /api/v1/webhooks/payments\nX-Signature: <hmac>\n{eventId, paymentId, status}
+activate ugate
+ugate -> ugate : Проверка подписи (NFR-10)
+alt Подпись неверна
+    ugate --> pay : 401 INVALID_SIGNATURE
+else Подпись верна
+    ugate -> cms : POST /api/v1/webhooks/payments
+    activate cms
+    cms -> cmdb : SELECT payment_event WHERE event_id
+    alt Событие уже обработано
+        cms --> ugate : 200 OK (повтор, без изменений)
+    else Оплата прошла (status = succeeded)
+        cms -> cmdb : UPDATE payment SET status = succeeded\nUPDATE order SET status = paid\nINSERT order_status_history
+        cms --> ugate : 200 OK
+    else Оплата не прошла (status = canceled)
+        cms -> cmdb : UPDATE payment SET status = failed\n(заказ остаётся awaiting_payment)
+        cms --> ugate : 200 OK
+    end
+    deactivate cms
+    ugate --> pay : 200 OK
+end
+deactivate ugate
+
+pay --> ugui : Возврат на returnUrl
+ugui -> ugate : GET /api/v1/orders/{orderId}
+activate ugate
+ugate -> cms : GET /api/v1/orders/{orderId}
+cms --> ugate : 200 OK {order}
+ugate --> ugui : 200 OK {order}
+deactivate ugate
+alt status = paid
+    ugui --> user : Экран подтверждения заказа (FR-16)
+else status = awaiting_payment
+    ugui --> user : «Оплата не прошла», кнопка\n«Оплатить снова»
+end
+
+== UC2.5 Доставка ==
+cms -> del : POST /v1/shipments\n{orderId, address, contact, items}
+activate cms
+activate del
+alt Служба доставки недоступна (NFR-07)
+    del --[#red]x cms : timeout / 5xx
+    cms -> cms : Повтор до 5 раз\nс экспоненциальной задержкой
+    opt Все попытки неудачны
+        cms -> cmdb : UPDATE order SET needs_attention = true
+        note over cms : Заказ попадает в очередь\nоператора магазина
+    end
+else Отправление создано
+    del --> cms : 201 Created {shipmentId}
+    cms -> cmdb : UPDATE order SET status = in_delivery,\nshipment_id
+end
+deactivate del
+deactivate cms
+
+del -> ugate : POST /api/v1/webhooks/delivery\nX-Signature: <hmac>\n{eventId, shipmentId, status}
+activate ugate
+ugate -> cms : POST /api/v1/webhooks/delivery
+activate cms
+alt status = delivered
+    cms -> cmdb : UPDATE order SET status = delivered
+    cms --> ugate : 200 OK
+else Переход не разрешён статусной моделью (BR-09)
+    cms --> ugate : 409 INVALID_STATUS_TRANSITION
+end
+deactivate cms
+ugate --> del : Ответ
+deactivate ugate
+
+== Автоотмена неоплаченного заказа (FR-17) ==
+cms -> cmdb : Плановая задача раз в минуту:\nSELECT orders WHERE status IN (created, awaiting_payment)\nAND expires_at < now()
+activate cms
+cms -> cmdb : UPDATE order SET status = cancelled\nUPDATE stock: снять резерв
+deactivate cms
+
+autonumber stop
+@enduml

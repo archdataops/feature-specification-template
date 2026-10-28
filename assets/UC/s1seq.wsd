@@ -1,0 +1,61 @@
+@startuml
+
+actor "Пользователь" as User #Application
+participant "Магазин:\nВитрина"  as stfrt #Business
+participant "Магазин:\nКорзина" as stcrt #Business
+participant "Доставка" as Delivery #PHYSICAL
+
+group UC1 Просмотр товаров
+    User -> stfrt : Просмотр товаров
+    activate stfrt
+end
+
+group UC2.1 Добавление товара в корзину
+    autonumber 1
+    User -> stfrt : Добавление товара в корзину
+    deactivate stfrt
+    User -> stcrt : Переход в корзину
+    activate stcrt
+    
+    
+end
+
+group UC2.2 Действия с параметрами списка товаров
+    
+    alt Варианты действий с параметрами списка товаров
+        User -> stcrt : Просмотр добавленных товаров
+    else
+        User -> stcrt : Изменение количества товаров
+    else
+        User -> stcrt : Удаление товара
+    else
+        User -> stcrt : Выбор всех товаров
+    end
+end
+
+group UC2 Заказ товара
+    User -> stcrt : Проверка итоговой суммы
+    User -> stcrt : Оформление заказа
+end
+
+group UC2.3 Ввод и проверка данных клиента
+    User -> stcrt : Ввод и проверка данных клиента
+end
+
+group UC2.4 Оплата заказа
+    User -> stcrt : Оплата заказа
+    stcrt -> User : Подтверждение оформления заказа
+    
+end
+
+group UC2.5 Доставка
+    deactivate stcrt
+    stcrt -> Delivery : Передача заказа курьеру
+    activate Delivery
+end
+
+autonumber stop
+Delivery -X User : Получение заказа
+deactivate Delivery
+
+@enduml

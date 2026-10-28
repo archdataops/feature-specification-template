@@ -1,0 +1,156 @@
+@startuml 07_data_model
+title Модель данных cmsDB
+hide circle
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+
+entity "product" as product {
+  * product_id : varchar(20) <<PK>>
+  --
+  * name : varchar(255)
+  * price : numeric(10,2)
+  * is_active : boolean
+  * created_at : timestamptz
+  * updated_at : timestamptz
+}
+
+entity "product_parameters" as params {
+  * product_id : varchar(20) <<PK, FK>>
+  --
+  screen_size : varchar(50)
+  cpu_cores : smallint
+  charger_power_w : smallint
+  ram_gb : smallint
+  rom_gb : smallint
+  main_camera : varchar(20)
+  * updated_at : timestamptz
+}
+
+entity "stock" as stock {
+  * product_id : varchar(20) <<PK, FK>>
+  --
+  * available : integer
+  * reserved : integer
+  * updated_at : timestamptz
+}
+
+entity "user" as user {
+  * user_id : varchar(20) <<PK>>
+  --
+  * name : varchar(50)
+  * phone : varchar(16)
+  * email : varchar(254)
+  * created_at : timestamptz
+  * updated_at : timestamptz
+}
+
+entity "address" as address {
+  * address_id : varchar(20) <<PK>>
+  --
+  * user_id : varchar(20) <<FK>>
+  * city : varchar(100)
+  * street : varchar(255)
+  * house : varchar(20)
+  apartment : varchar(20)
+  * postal_code : char(6)
+  * created_at : timestamptz
+}
+
+entity "cart" as cart {
+  * cart_id : varchar(20) <<PK>>
+  --
+  * user_id : varchar(20) <<FK, UNIQUE>>
+  * updated_at : timestamptz
+}
+
+entity "cart_item" as cart_item {
+  * item_id : varchar(20) <<PK>>
+  --
+  * cart_id : varchar(20) <<FK>>
+  * product_id : varchar(20) <<FK>>
+  * quantity : smallint
+  * selected : boolean
+  * price_at_add : numeric(10,2)
+  * updated_at : timestamptz
+}
+
+entity "order" as order {
+  * order_id : varchar(20) <<PK>>
+  --
+  * user_id : varchar(20) <<FK>>
+  * status : order_status
+  * total : numeric(12,2)
+  delivery_method : delivery_method
+  contact_name : varchar(50)
+  contact_phone : varchar(16)
+  contact_email : varchar(254)
+  delivery_address : text
+  shipment_id : varchar(50)
+  * needs_attention : boolean
+  * expires_at : timestamptz
+  * created_at : timestamptz
+  * updated_at : timestamptz
+}
+
+entity "order_item" as order_item {
+  * order_id : varchar(20) <<PK, FK>>
+  * product_id : varchar(20) <<PK, FK>>
+  --
+  * name : varchar(255)
+  * unit_price : numeric(10,2)
+  * quantity : smallint
+}
+
+entity "order_status_history" as history {
+  * id : bigint <<PK>>
+  --
+  * order_id : varchar(20) <<FK>>
+  * status : order_status
+  * actor : varchar(20)
+  reason : varchar(100)
+  * changed_at : timestamptz
+}
+
+entity "payment" as payment {
+  * payment_id : varchar(20) <<PK>>
+  --
+  * order_id : varchar(20) <<FK>>
+  provider_payment_id : varchar(64)
+  * method : payment_method
+  * amount : numeric(12,2)
+  * status : payment_status
+  * created_at : timestamptz
+  * updated_at : timestamptz
+}
+
+entity "webhook_event" as wh {
+  * event_id : varchar(64) <<PK>>
+  --
+  * source : varchar(20)
+  * received_at : timestamptz
+}
+
+entity "idempotency_key" as idem {
+  * key : uuid <<PK>>
+  --
+  * user_id : varchar(20) <<FK>>
+  * endpoint : varchar(100)
+  * request_hash : char(64)
+  * response_code : smallint
+  * response_body : jsonb
+  * created_at : timestamptz
+}
+
+product ||--o| params
+product ||--|| stock
+user ||--o{ address
+user ||--o| cart
+cart ||--o{ cart_item
+product ||--o{ cart_item
+user ||--o{ order
+order ||--|{ order_item
+product ||--o{ order_item
+order ||--|{ history
+order ||--o{ payment
+user ||--o{ idem
+@enduml

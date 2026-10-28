@@ -1,0 +1,79 @@
+@startuml
+class product {
+    uid : varchar : "P001"
+    productid : varchar : "m1125"
+    name : varchar : "Смартфон Apple iPhone 13 128GB"
+    price : numeric : 75999.0
+    prodparams : array : [{productparameters}]
+    creationdate : timestamp : 1749999076
+    updated  : timestamp : 1749999076
+}
+
+class productparameters {
+    uid : varchar : "A001"
+    screenSize : string : "6.1\"/2532x1170"
+    cores : int : 6
+    power : string : "20 Вт"
+    ram : string : "6 ГБ"
+    rom : string : "128 ГБ"
+    mainCamera : string : "64/2"
+    updated  : timestamp : 1749999076
+}
+
+class cart {
+    uid : varchar : "C001"
+    items : array : [{cartitem}]
+    total : numeric : 279978.0
+    updated: timestamp : 1749999076
+}
+
+class cartitem {
+    uid : varchar : "CI001"
+    productid : varchar : product.productid
+    quantity : int : 1
+    updated: timestamp : 1749999076
+}
+
+class order {
+    uid : varchar : "O001"
+    userid : int : 123
+    creationdate : timestamp : 1749999076
+    updated  : timestamp : 1749999076
+    orderstate: string : "delivered"
+    totalprice : numeric : 279978.0
+    paymentmethod : string : "online"
+    deliverymethod : string : "delivery"
+    contactname : varchar : user.name
+    contactphone : string : user.phone
+    email : string : user.email
+    adress : string : address.adressid
+    products: array : [{product.productid}]
+}
+
+class user {
+    uid : varchar : "U001"
+    userid : int : 123
+    name : varchar : "Дмитрий"
+    phone : string : "+7-812-509-65-00"
+    email : string : "example@example.com"
+    address : array :  [{adressid}]
+    creationdate : timestamp : 1749999076
+    updated : timestamp : 1749999076
+}
+
+class address {
+    uid : varchar : "A001"
+    adressid : string : 321
+    street : string : "г. Санкт-Петербург, Невский пр, 21"
+    creationdate : timestamp : 1749999076
+}
+
+' Связи между классами
+product "1" -- "0..*" productparameters : Имеет >
+cart "1" -- "0..*" cartitem : Содержит >
+cartitem "1" -- "1" product : Отсылает к >
+order "1" -- "1" user : Принадлежит >
+order "1" -- "0..*" product : Содержит >
+order "1" -- "1" address : Использует >
+user "1" -- "0..*" address : Имеет >
+@enduml

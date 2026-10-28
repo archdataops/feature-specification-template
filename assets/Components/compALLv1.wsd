@@ -1,0 +1,74 @@
+@startuml
+
+package "User Interface" {
+    component "User GUI" as usergui {
+        [Пользовательский интерфейс] 
+        [Витрина товаров]
+        [Личный кабинет пользователя]
+        [Логин процесс]
+        [Корзина покупок]
+    }
+    portout HTTP
+}
+
+package "Backend" {
+    component "productService" as productService {
+        [Обрабатывает запросы на получение списка товаров, их деталей и категорий.]
+    }
+    
+    component "authService" as authService {
+        [Обрабатывает процесс логина и регистрации пользователей, управление сессиями.]
+    }
+    
+    component "userService" as userService {
+        [Управляет данными пользователей, включая их профили и настройки.]
+    }
+    
+    component "cmsService" as cmsService {
+        [Управляет сделками, корзиной, расчетом стоимости и другими связанными функциями.]
+    }
+    
+    component "logisticsService" as logisticsService {
+        [Управляет процессами доставки, отслеживания заказов и взаимодействия с курьерскими службами.]
+    }
+    
+    database "PostgreSQL" {
+        [productDBService] as productDBService
+        [userDBService] as userDBService
+        [orderDBService] as orderDBService
+        [logisticsDBService] as logisticsDBService
+    }
+    
+    component "kafkaBroker" as kafkaBroker {
+        [Обеспечивает асинхронную обработку сообщений и взаимодействие между сервисами.]
+    }
+    
+    component "redis" as redis {
+        [Используется для кэширования данных и ускорения доступа к часто запрашиваемой информации.]
+    }
+}
+
+usergui - HTTP
+HTTP -- productService : REST API
+HTTP -- authService : REST API
+HTTP -- userService : REST API
+HTTP -- cmsService : REST API
+HTTP -- logisticsService : REST API
+
+productService -- productDBService : CRUD Operations
+authService -- userDBService : CRUD Operations
+userService -- userDBService : CRUD Operations
+cmsService -- orderDBService : CRUD Operations
+logisticsService -- logisticsDBService : CRUD Operations
+
+kafkaBroker -- productService : Message Queue
+kafkaBroker -- authService : Message Queue
+kafkaBroker -- userService : Message Queue
+kafkaBroker -- cmsService : Message Queue
+kafkaBroker -- logisticsService : Message Queue
+
+redis -- productService : Caching
+redis -- userService : Caching
+redis -- cmsService : Caching
+
+@enduml

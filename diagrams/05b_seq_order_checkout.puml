@@ -1,0 +1,95 @@
+@startuml 05b_seq_order_checkout
+title UC2, UC2.3. Создание заказа и проверка данных покупателя
+skinparam MaxMessageSize 160
+skinparam sequenceMessageAlign center
+autonumber "<b>[0]"
+
+actor "Покупатель" as user #Business
+box "Клиент" #Application
+    participant "Web GUI /\nMobile App" as ugui #Technology
+end box
+box "Backend" #Application
+    participant "guiGateway" as ugate #Technology
+    participant "cmsService" as cms #Technology
+    database "cmsDB" as cmdb #Technology
+end box
+
+== UC2 Заказ товара ==
+user -> ugui : Проверяет итог и нажимает\n«Оформить заказ»
+ugui -> ugate : POST /api/v1/orders\nIdempotency-Key: <uuid>\n{expectedTotal}
+activate ugate
+ugate -> cms : POST /api/v1/orders\n{userId, expectedTotal}
+activate cms
+cms -> cmdb : SELECT idempotency_key
+alt Ключ уже использован с тем же телом (BR-10)
+    cms --> ugate : 201 Created {order}\n(ранее созданный заказ)
+    ugate --> ugui : 201 Created {order}
+else Новый запрос
+    cms -> cmdb : BEGIN\nSELECT выбранные cart_items\nFOR UPDATE остатков
+    alt Нет выбранных позиций (BR-04)
+        cms -> cmdb : ROLLBACK
+        cms --> ugate : 422 NO_ITEMS_SELECTED
+        ugate --> ugui : 422 NO_ITEMS_SELECTED
+        ugui --> user : «Отметьте товары для заказа»
+    else Товара не хватает (BR-02)
+        cms -> cmdb : ROLLBACK
+        cms --> ugate : 409 OUT_OF_STOCK\n{items: [{itemId, available}]}
+        ugate --> ugui : 409 OUT_OF_STOCK
+        ugui --> user : Позиции без остатка подсвечены
+    else Сумма отличается от expectedTotal (BR-03)
+        cms -> cmdb : ROLLBACK
+        cms --> ugate : 409 PRICE_CHANGED\n{oldTotal, newTotal}
+        ugate --> ugui : 409 PRICE_CHANGED
+        ugui --> user : «Цены изменились», новая сумма,\nповторное подтверждение
+    else Проверки пройдены
+        cms -> cmdb : INSERT order (status = created,\nexpires_at = now + 30 мин)\nINSERT order_item (цены фиксируются)\nUPDATE stock SET reserved\nDELETE выбранные cart_items (FR-10)\nINSERT order_status_history\nCOMMIT
+        cmdb --> cms : OK
+        cms --> ugate : 201 Created {order}
+        ugate --> ugui : 201 Created {order}
+        ugui --> user : Форма оформления с данными\nиз профиля (FR-11)
+    end
+end
+deactivate cms
+deactivate ugate
+
+== UC2.3 Ввод и проверка данных покупателя ==
+user -> ugui : Проверяет или вводит\nимя, телефон, email, адрес
+ugui -> ugui : Проверка формата полей\nна клиенте (BR-06)
+ugui -> ugate : POST /api/v1/checkout/validate\n{orderId, contact, address, deliveryMethod}
+activate ugate
+ugate -> cms : POST /api/v1/checkout/validate
+activate cms
+alt Заказ не найден или чужой (BR-08)
+    cms --> ugate : 404 ORDER_NOT_FOUND
+    ugate --> ugui : 404 ORDER_NOT_FOUND
+else Неверный формат полей (BR-06)
+    cms --> ugate : 400 VALIDATION_ERROR\n{details: [{field, issue}]}
+    ugate --> ugui : 400 VALIDATION_ERROR
+    ugui --> user : Ошибки у конкретных полей (FR-12)
+else Адрес вне зоны доставки (BR-07)
+    cms --> ugate : 422 DELIVERY_UNAVAILABLE
+    ugate --> ugui : 422 DELIVERY_UNAVAILABLE
+    ugui --> user : «Сюда пока не доставляем»
+else Данные корректны
+    cms -> cmdb : UPDATE order SET contact, address,\ndelivery_method
+    cms --> ugate : 200 OK {valid: true}
+    ugate --> ugui : 200 OK {valid: true}
+    ugui --> user : Кнопка «Перейти к оплате» активна
+end
+deactivate cms
+deactivate ugate
+
+opt Покупатель сохраняет изменённые данные в профиль (FR-13)
+    ugui -> ugate : PUT /api/v1/users/me\n{name, phone, email}
+    activate ugate
+    ugate -> cms : PUT /api/v1/users/me
+    activate cms
+    cms -> cmdb : UPDATE user
+    cms --> ugate : 200 OK {user}
+    deactivate cms
+    ugate --> ugui : 200 OK {user}
+    deactivate ugate
+end
+
+autonumber stop
+@enduml

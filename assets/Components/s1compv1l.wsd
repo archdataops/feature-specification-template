@@ -1,0 +1,21 @@
+@startuml
+
+package "User Interface" {
+    component "User GUI" as ugui {
+        
+  }
+  portout HTTP
+}
+
+package "Backend" {
+  [guiGateway]
+  [guiGateway] -- REST_API
+  [cmsService] - REST_API
+  database "PostgreSQL" {
+    [cmdb] -- REST_API
+  }
+  
+}
+ugui - HTTP
+HTTP -- [guiGateway] : REST API
+@enduml

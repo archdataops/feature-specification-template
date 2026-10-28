@@ -1,0 +1,45 @@
+@startuml 06_components
+title Компоненты решения «Онлайн-заказ»
+skinparam componentStyle uml2
+left to right direction
+
+actor "Покупатель" as buyer #Business
+actor "Оператор магазина" as operator #Business
+
+package "Клиенты" #Application {
+    component "Web GUI\n(React)" as web #Technology
+    component "Mobile App\n(iOS / Android)" as mob #Technology
+    component "Back-office\n(панель оператора)" as bo #Technology
+}
+
+package "Backend" #Application {
+    component "guiGateway\n(API-шлюз)" as ugate #Technology
+    component "authService\n(аутентификация)" as auth #Technology
+    component "cmsService\n(корзина, заказы, профили)" as cms #Technology
+    database "cmsDB\n(PostgreSQL)" as cmdb #Technology
+}
+
+package "Внешние системы" #Physical {
+    component "paymentGateway\n(платёжный шлюз)" as pay #Physical
+    component "deliveryService\n(служба доставки)" as del #Physical
+    component "Учётная система\n(остатки)" as erp #Physical
+}
+
+buyer --> web
+buyer --> mob
+operator --> bo
+
+web --> ugate : HTTPS / REST
+mob --> ugate : HTTPS / REST
+bo --> ugate : HTTPS / REST
+
+ugate --> auth : проверка токена
+ugate --> cms : REST (A1–A11)
+cms --> cmdb : SQL
+
+cms --> pay : E1 REST
+pay --> ugate : W1 webhook
+cms --> del : E2 REST
+del --> ugate : W2 webhook
+erp ..> cmdb : синхронизация остатков\n(вне решения)
+@enduml

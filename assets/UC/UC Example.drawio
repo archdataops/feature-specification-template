@@ -1,0 +1,39 @@
+<mxfile host="Electron" modified="2025-06-11T22:36:28.684Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.6.5 Chrome/114.0.5735.243 Electron/25.3.1 Safari/537.36" etag="EJygkOFbggWwkOZ7w5fk" version="21.6.5" type="device">
+  <diagram name="Страница 1" id="WIGVNiXLOzwZWPS9nfHB">
+    <mxGraphModel dx="1418" dy="828" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="3NQT1mx0BqthMy4idSxY-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=none;endFill=0;" edge="1" parent="1" source="3NQT1mx0BqthMy4idSxY-1" target="3NQT1mx0BqthMy4idSxY-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="3NQT1mx0BqthMy4idSxY-1" value="Пользователь" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;" vertex="1" parent="1">
+          <mxGeometry x="80" y="365" width="30" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="3NQT1mx0BqthMy4idSxY-2" value="UC.1&lt;br&gt;Основной Вариант Использования" style="ellipse;whiteSpace=wrap;html=1;strokeWidth=3;" vertex="1" parent="1">
+          <mxGeometry x="170" y="360" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="3NQT1mx0BqthMy4idSxY-3" value="&amp;lt;&amp;lt;Включает&amp;gt;&amp;gt;" style="edgeStyle=none;html=1;endArrow=open;verticalAlign=bottom;dashed=1;labelBackgroundColor=none;rounded=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="3NQT1mx0BqthMy4idSxY-2" target="3NQT1mx0BqthMy4idSxY-6">
+          <mxGeometry x="0.3359" y="28" width="160" relative="1" as="geometry">
+            <mxPoint x="210" y="570" as="sourcePoint" />
+            <mxPoint x="370" y="570" as="targetPoint" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3NQT1mx0BqthMy4idSxY-4" value="&amp;lt;&amp;lt;Расширяет&amp;gt;&amp;gt;" style="edgeStyle=none;html=1;startArrow=open;endArrow=none;startSize=12;verticalAlign=bottom;dashed=1;labelBackgroundColor=none;rounded=0;" edge="1" parent="1" source="3NQT1mx0BqthMy4idSxY-2" target="3NQT1mx0BqthMy4idSxY-5">
+          <mxGeometry x="0.1538" y="15" width="160" relative="1" as="geometry">
+            <mxPoint x="270" y="520" as="sourcePoint" />
+            <mxPoint x="430" y="520" as="targetPoint" />
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="3NQT1mx0BqthMy4idSxY-5" value="UC.1.2&lt;br style=&quot;border-color: var(--border-color);&quot;&gt;Дополнительный Вариант &lt;br&gt;Использования" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="414" y="360" width="140" height="70" as="geometry" />
+        </mxCell>
+        <mxCell id="3NQT1mx0BqthMy4idSxY-6" value="UC.1.1&lt;br style=&quot;border-color: var(--border-color);&quot;&gt;Частный Вариант Использования" style="ellipse;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="310" y="480" width="140" height="70" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
