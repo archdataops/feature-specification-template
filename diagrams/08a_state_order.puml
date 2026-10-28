@@ -1,0 +1,36 @@
+@startuml 08a_state_order
+title Жизненный цикл заказа (order.status)
+hide empty description
+skinparam state {
+  BackgroundColor #Application
+  BorderColor #555555
+}
+
+[*] --> created : T-01 Создание заказа\n(A6, покупатель)
+
+created --> awaiting_payment : T-02 Инициация оплаты\n(A9, покупатель)
+created --> cancelled : T-05 Отмена покупателем (A11)\nили истёк срок оплаты (BR-05)
+
+awaiting_payment --> awaiting_payment : T-03 Оплата не прошла\n(W1, status = canceled)
+awaiting_payment --> paid : T-04 Оплата прошла\n(W1, status = succeeded)
+awaiting_payment --> cancelled : T-06 Отмена покупателем (A11)\nили истёк срок оплаты (BR-05)
+
+paid --> in_delivery : T-07 Отправление создано\n(E2, 201 Created)
+
+in_delivery --> delivered : T-08 Заказ вручён\n(W2, status = delivered)
+
+delivered --> [*]
+cancelled --> [*]
+
+note right of paid
+  Если служба доставки недоступна,
+  заказ остаётся в paid
+  с needs_attention = true (NFR-07)
+end note
+
+note right of in_delivery
+  W2 accepted / in_transit —
+  статус не меняется.
+  W2 failed — needs_attention = true
+end note
+@enduml

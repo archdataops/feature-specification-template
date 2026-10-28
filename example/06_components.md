@@ -44,7 +44,7 @@
 | `backoffice` | — | Методы поиска заказов (вне этого примера) | — |
 | `guiGateway` | A1–A11, W1, W2 (внешний контур) | `authService`, `cmsService` | — |
 | `authService` | Проверка токена | — | Собственное хранилище пользователей и ролей |
-| `cmsService` | A1–A11, W1, W2 (внутренний контур) | E1, E2 | `product`, `stock`, `cart`, `cart_item`, `order`, `order_item`, `order_status_history`, `payment`, `user`, `address`, `idempotency_key` |
+| `cmsService` | A1–A11, W1, W2 (внутренний контур) | E1, E2 | `product`, `stock`, `cart`, `cart_item`, `order`, `order_item`, `order_status_history`, `payment`, `user`, `address`, `idempotency_key`, `webhook_event`, `audit_log` |
 | `paymentGateway` | E1 | W1 | — |
 | `deliveryService` | E2 | W2 | — |
 

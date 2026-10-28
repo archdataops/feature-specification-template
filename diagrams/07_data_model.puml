@@ -141,6 +141,20 @@ entity "idempotency_key" as idem {
   * created_at : timestamptz
 }
 
+entity "audit_log" as audit {
+  * id : bigint <<PK>>
+  --
+  * event_code : varchar(10)
+  * actor_type : varchar(20)
+  * actor_id : varchar(20)
+  * object_type : varchar(20)
+  * object_id : varchar(64)
+  * changes : jsonb
+  ip_address : inet
+  * trace_id : varchar(32)
+  * created_at : timestamptz
+}
+
 product ||--o| params
 product ||--|| stock
 user ||--o{ address

@@ -1,0 +1,23 @@
+@startuml 08b_state_payment
+title Жизненный цикл платежа (payment.status)
+hide empty description
+skinparam state {
+  BackgroundColor #Application
+  BorderColor #555555
+}
+
+[*] --> pending : P-01 Платёж создан\n(A9 → E1)
+
+pending --> succeeded : P-02 W1 status = succeeded
+pending --> failed : P-03 W1 status = canceled\n(отказ банка, отмена покупателем)
+pending --> cancelled : P-04 Заказ отменён,\nпока платёж не завершён
+
+succeeded --> [*]
+failed --> [*]
+cancelled --> [*]
+
+note right of failed
+  Для повторной оплаты создаётся
+  новый платёж (новая запись payment)
+end note
+@enduml
