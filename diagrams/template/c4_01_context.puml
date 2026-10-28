@@ -1,0 +1,12 @@
+@startuml
+!include <C4/C4_Context>
+LAYOUT_WITH_LEGEND()
+title Уровень 1. Контекст: название решения
+
+Person(user, "Роль пользователя", "Что делает")
+System(solution, "Название решения", "Что делает решение, одной фразой")
+System_Ext(ext, "Внешняя система", "Зачем она нужна")
+
+Rel(user, solution, "Что делает", "HTTPS")
+Rel(solution, ext, "Что запрашивает", "REST")
+@enduml

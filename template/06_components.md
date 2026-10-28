@@ -17,6 +17,8 @@
 
 *Диаграмма компонентов: группы (клиенты, backend, внешние системы), связи с протоколами и номерами API из раздела 5. Исходник — `diagrams/06_components.puml`.*
 
+![Как выглядит заготовка](../diagrams/template/06_components.svg)
+
 ```plantuml
 @startuml
 left to right direction

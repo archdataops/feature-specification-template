@@ -37,6 +37,8 @@
 
 *Карта сущностей (mindmap): главные объекты решения и их ключевые атрибуты. Исходник — в `diagrams/01_entities_mindmap.puml`.*
 
+![Как выглядит заготовка](../diagrams/template/01_solution_overview.svg)
+
 ```plantuml
 @startmindmap
 * Решение

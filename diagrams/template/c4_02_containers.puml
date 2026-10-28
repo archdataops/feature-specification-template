@@ -1,0 +1,20 @@
+@startuml
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+title Уровень 2. Контейнеры
+
+Person(user, "Роль пользователя")
+
+System_Boundary(solution, "Название решения") {
+  Container(ui, "Клиент", "Технология", "Ответственность")
+  Container(svc, "Сервис", "Технология", "Ответственность")
+  ContainerDb(db, "База данных", "Технология", "Что хранит")
+}
+
+System_Ext(ext, "Внешняя система")
+
+Rel(user, ui, "Использует", "HTTPS")
+Rel(ui, svc, "Номера методов API", "REST/JSON")
+Rel(svc, db, "Читает и пишет", "SQL")
+Rel(svc, ext, "Номер исходящего вызова", "REST")
+@enduml

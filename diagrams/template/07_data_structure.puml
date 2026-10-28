@@ -1,0 +1,14 @@
+@startuml
+hide circle
+entity "table_a" as a {
+  * id : varchar(20) <<PK>>
+  --
+  * name : varchar(255)
+}
+entity "table_b" as b {
+  * id : varchar(20) <<PK>>
+  --
+  * a_id : varchar(20) <<FK>>
+}
+a ||--o{ b
+@enduml

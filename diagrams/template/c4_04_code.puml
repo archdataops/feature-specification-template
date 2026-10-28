@@ -1,0 +1,38 @@
+@startuml
+hide empty members
+hide circle
+skinparam classAttributeIconSize 0
+' Цвета как у компонентов C4 (уровень 3)
+skinparam shadowing false
+skinparam roundCorner 10
+skinparam ArrowColor #666666
+skinparam class {
+  BackgroundColor #85BBF0
+  BorderColor #78A8D8
+  FontColor #000000
+  BackgroundColor<<exception>> #999999
+  FontColor<<exception>> #FFFFFF
+}
+skinparam note {
+  BackgroundColor #F5F5F5
+  BorderColor #999999
+}
+title Уровень 4. Код: ядро компонента
+
+enum Status {
+  STATE_A
+  STATE_B
+}
+
+class Entity {
+  - id : str
+  - status : Status
+  + action() : None  <<T-01>>
+  - _transition(to : Status) : None
+}
+
+class TransitionError <<exception>>
+
+Entity --> Status
+Entity ..> TransitionError : выбрасывает
+@enduml

@@ -1,0 +1,14 @@
+@startuml
+left to right direction
+actor "Пользователь" as user
+package "Клиенты" {
+  component "Клиент" as ui
+}
+package "Backend" {
+  component "Сервис" as svc
+  database "БД" as db
+}
+user --> ui
+ui --> svc : HTTPS / REST
+svc --> db : SQL
+@enduml

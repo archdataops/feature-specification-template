@@ -1,0 +1,10 @@
+@startuml
+left to right direction
+actor "Пользователь" as user
+rectangle "Решение" {
+  usecase "UC1 Основное действие" as uc1
+  usecase "UC1.1 Шаг основного действия" as uc1_1
+}
+user --> uc1
+uc1 ..> uc1_1 : <<include>>
+@enduml

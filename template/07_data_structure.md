@@ -9,6 +9,8 @@
 
 *ER-диаграмма: таблицы, ключевые поля, связи с кратностью. Исходник — `diagrams/07_data_model.puml`.*
 
+![Как выглядит заготовка](../diagrams/template/07_data_structure.svg)
+
 ```plantuml
 @startuml
 hide circle

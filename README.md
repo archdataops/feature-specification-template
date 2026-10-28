@@ -82,8 +82,9 @@ Workflow [`.github/workflows/spec-checks.yml`](.github/workflows/spec-checks.yml
 |-----|---------------|
 | Трассируемость примера | Все ID и коды ошибок согласованы, у требований есть проверки, методы раздела 5 совпадают с `openapi.yaml` |
 | Трассируемость шаблона | Пустой шаблон остаётся согласованным |
+| Заготовки диаграмм шаблона | Код PlantUML в шаблоне совпадает с `diagrams/template/`, у каждого блока есть картинка |
 | Линтер OpenAPI (Redocly) | Спецификация валидна, примеры соответствуют схемам |
-| Синтаксис PlantUML | Все диаграммы в `diagrams/` и `diagrams/c4/` собираются без ошибок |
+| Синтаксис PlantUML | Все диаграммы в `diagrams/`, `diagrams/c4/` и `diagrams/template/` собираются без ошибок |
 | Публикация Swagger UI | Только из `main` и только для публичного репозитория |
 
 ## Автоматическая проверка согласованности
@@ -125,8 +126,8 @@ python3 tools/check_traceability.py example --openapi api/openapi.yaml   # пл�
 ```text
 example/    заполненный пример (разделы 01–13, архитектура C4 в example/c4/)
 template/   пустой шаблон с подсказками и минимальным набором связанных ID, C4 в template/c4/
-diagrams/   исходники PlantUML (.puml) и отрендеренные SVG, в diagrams/c4/ — диаграммы C4
-tools/      скрипт проверки трассируемости
+diagrams/   исходники PlantUML (.puml) и SVG; c4/ — диаграммы C4, template/ — заготовки из шаблона
+tools/      проверка трассируемости, синхронизация заготовок диаграмм, публикация Pages
 api/        спецификация OpenAPI
 docs/       страница Swagger UI для GitHub Pages
 assets/     макеты интерфейса и иллюстрации
@@ -139,8 +140,17 @@ redocly.yaml  настройки линтера OpenAPI
 Все диаграммы хранятся как код в `diagrams/*.puml` и отрендерены в SVG рядом с исходником. Чтобы перерисовать локально:
 
 ```bash
-java -jar plantuml.jar -tsvg -charset UTF-8 diagrams/*.puml
+java -jar plantuml.jar -tsvg -charset UTF-8 diagrams/*.puml diagrams/c4/*.puml
 ```
+
+**Заготовки диаграмм в шаблоне.** В разделах `template/` код PlantUML лежит прямо в Markdown, а над каждым блоком — картинка, как эта заготовка выглядит. Чтобы код не жил в двух местах, `.puml` для картинок не правятся руками, а извлекаются из шаблона скриптом. После изменения заготовки в шаблоне:
+
+```bash
+python3 tools/template_diagrams.py                                       # обновить .puml и вставить картинки
+java -jar plantuml.jar -tsvg -charset UTF-8 diagrams/template/*.puml     # перерисовать SVG
+```
+
+CI проверяет синхронизацию командой `python3 tools/template_diagrams.py --check`. Ограничение: скрипт видит, что `.puml` отстал от шаблона, но не видит, что SVG не перерисован после правки `.puml` — это остаётся на совести автора.
 
 ## Лицензия
 

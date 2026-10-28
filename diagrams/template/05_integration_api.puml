@@ -1,0 +1,17 @@
+@startuml
+autonumber
+actor "Пользователь" as user
+participant "Клиент" as ui
+participant "Сервис" as svc
+database "БД" as db
+
+user -> ui : Действие
+ui -> svc : POST /api/v1/resource
+alt Данные неверные
+  svc --> ui : 400 VALIDATION_ERROR
+  ui --> user : Ошибка у поля
+else Успех
+  svc -> db : INSERT
+  svc --> ui : 201 Created
+end
+@enduml

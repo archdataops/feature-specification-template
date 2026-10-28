@@ -30,6 +30,9 @@ jobs:
       - name: Трассируемость пустого шаблона
         run: python3 tools/check_traceability.py template
 
+      - name: Заготовки диаграмм шаблона синхронизированы
+        run: python3 tools/template_diagrams.py --check
+
       - uses: actions/setup-node@v7
         with:
           node-version: "22"
@@ -41,7 +44,7 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq graphviz > /dev/null
           curl -sSL -o plantuml.jar https://github.com/plantuml/plantuml/releases/download/v1.2024.7/plantuml-1.2024.7.jar
-          java -jar plantuml.jar -checkonly -charset UTF-8 diagrams/*.puml diagrams/c4/*.puml
+          java -jar plantuml.jar -checkonly -charset UTF-8 diagrams/*.puml diagrams/c4/*.puml diagrams/template/*.puml
 
   pages:
     name: Публикация Swagger UI

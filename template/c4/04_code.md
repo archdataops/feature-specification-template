@@ -2,10 +2,13 @@
 
 *Классы ядра одного компонента — только для самой важной или запутанной логики. Это проектный эскиз, а не документация всего кода.*
 
+![Как выглядит заготовка](../../diagrams/template/c4_04_code.svg)
+
 ```plantuml
 @startuml
 hide empty members
 hide circle
+skinparam classAttributeIconSize 0
 ' Цвета как у компонентов C4 (уровень 3)
 skinparam shadowing false
 skinparam roundCorner 10

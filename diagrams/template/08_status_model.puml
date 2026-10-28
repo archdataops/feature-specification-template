@@ -1,0 +1,6 @@
+@startuml
+hide empty description
+[*] --> created : T-01 Событие
+created --> done : Событие
+done --> [*]
+@enduml

@@ -147,3 +147,33 @@ python3 tools/check_traceability.py example --openapi api/openapi.yaml
 ```
 
 Если любая из команд вернёт 1, шаг и весь workflow завершатся с ошибкой, и в pull request будет видно, что спецификация разошлась.
+
+---
+
+# Синхронизация заготовок диаграмм шаблона
+
+`template_diagrams.py` следит, чтобы у каждого блока кода PlantUML в шаблоне (`template/**/*.md`) была отрисованная картинка и чтобы картинка соответствовала коду.
+
+```bash
+python3 tools/template_diagrams.py            # извлечь код в diagrams/template/*.puml и вставить картинки
+python3 tools/template_diagrams.py --check    # только проверить (для CI), код возврата 1 при расхождении
+```
+
+Что делает скрипт:
+1. Находит в шаблоне блоки ```` ```plantuml ````.
+2. Сохраняет каждый в `diagrams/template/<имя>.puml`. Имя строится из пути файла: `template/01_solution_overview.md` → `01_solution_overview`, `template/c4/02_containers.md` → `c4_02_containers`, второй блок в том же файле → `…_2`.
+3. Вставляет над блоком строку `![Как выглядит заготовка](…/diagrams/template/<имя>.svg)`, если её ещё нет. Повторный запуск ничего не меняет.
+
+После этого SVG перерисовываются PlantUML:
+
+```bash
+java -jar plantuml.jar -tsvg -charset UTF-8 diagrams/template/*.puml
+```
+
+Режим `--check` сообщает об ошибке, если:
+- код в `.puml` не совпадает с кодом в шаблоне;
+- над блоком нет картинки;
+- для блока нет SVG;
+- в `diagrams/template/` остался `.puml`, которого больше нет в шаблоне.
+
+Чего он не видит: SVG, который не перерисовали после изменения `.puml`. Сравнивать SVG побайтно бессмысленно — результат рендера зависит от шрифтов системы.

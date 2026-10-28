@@ -14,6 +14,8 @@
 
 *Диаграмма состояний с ID переходов на стрелках. Исходник — `diagrams/08*.puml`.*
 
+![Как выглядит заготовка](../diagrams/template/08_status_model.svg)
+
 ```plantuml
 @startuml
 hide empty description

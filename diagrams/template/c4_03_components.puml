@@ -1,0 +1,19 @@
+@startuml
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+title Уровень 3. Компоненты контейнера «Сервис»
+
+Container(caller, "Кто вызывает", "Технология")
+ContainerDb(db, "База данных", "Технология")
+
+Container_Boundary(svc, "Сервис") {
+  Component(api, "Обработчики API", "Технология", "Какие методы принимает")
+  Component(logic, "Бизнес-логика", "Технология", "Правила и статусы")
+  Component(data, "Доступ к данным", "Технология", "С какими таблицами работает")
+}
+
+Rel(caller, api, "Запросы", "REST/JSON")
+Rel(api, logic, "Вызывает")
+Rel(logic, data, "Читает и пишет")
+Rel(data, db, "SQL")
+@enduml
