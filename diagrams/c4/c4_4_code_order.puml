@@ -1,0 +1,83 @@
+@startuml c4_4_code_order
+title Уровень 4. Код: ядро заказа в модуле «Бизнес-логика»
+hide empty members
+hide circle
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam roundCorner 10
+skinparam defaultFontName sans-serif
+skinparam ArrowColor #666666
+skinparam ArrowFontColor #666666
+skinparam class {
+  BackgroundColor #85BBF0
+  BorderColor #78A8D8
+  FontColor #000000
+  AttributeFontColor #000000
+  StereotypeFontColor #000000
+  BackgroundColor<<exception>> #999999
+  BorderColor<<exception>> #8A8A8A
+  FontColor<<exception>> #FFFFFF
+  StereotypeFontColor<<exception>> #FFFFFF
+}
+skinparam note {
+  BackgroundColor #F5F5F5
+  BorderColor #999999
+  FontColor #333333
+}
+
+enum OrderStatus {
+  CREATED
+  AWAITING_PAYMENT
+  PAID
+  IN_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+class Order {
+  - order_id : str
+  - status : OrderStatus
+  - items : list[OrderItem]
+  - total : Decimal
+  - expires_at : datetime
+  + start_payment() : Payment  <<T-02>>
+  + mark_paid() : None  <<T-04>>
+  + cancel(reason) : None  <<T-05, T-06>>
+  + ship(shipment_id) : None  <<T-07>>
+  + deliver() : None  <<T-08>>
+  - _transition(to : OrderStatus) : None
+}
+
+class OrderItem {
+  - product_id : str
+  - unit_price : Decimal
+  - quantity : int
+}
+
+class Payment {
+  - payment_id : str
+  - status : str
+  - amount : Decimal
+}
+
+class OrderService {
+  + create_from_cart(user_id, expected_total) : Order  <<T-01>>
+  + cancel_expired() : int
+}
+
+class TransitionError <<exception>>
+
+Order "1" *-- "1..*" OrderItem
+Order "1" o-- "0..*" Payment
+Order --> OrderStatus
+OrderService ..> Order : создаёт
+Order ..> TransitionError : выбрасывает
+
+note right of Order
+  _transition() проверяет, что переход есть
+  в статусной модели (раздел 8, BR-09).
+  Если нет — TransitionError,
+  которая превращается в ответ
+  409 INVALID_STATUS_TRANSITION.
+end note
+@enduml

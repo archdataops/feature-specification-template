@@ -41,7 +41,7 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq graphviz > /dev/null
           curl -sSL -o plantuml.jar https://github.com/plantuml/plantuml/releases/download/v1.2024.7/plantuml-1.2024.7.jar
-          java -jar plantuml.jar -checkonly -charset UTF-8 diagrams/*.puml
+          java -jar plantuml.jar -checkonly -charset UTF-8 diagrams/*.puml diagrams/c4/*.puml
 
   pages:
     name: Публикация Swagger UI

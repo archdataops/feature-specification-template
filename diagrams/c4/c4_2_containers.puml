@@ -1,0 +1,49 @@
+@startuml c4_2_containers
+!include <C4/C4_Container>
+LAYOUT_WITH_LEGEND()
+
+title Уровень 2. Контейнеры: из чего состоит решение
+
+Person(buyer, "Покупатель")
+Person(operator, "Оператор магазина")
+Person(admin, "Администратор")
+
+System_Boundary(shop, "Интернет-магазин: онлайн-заказ") {
+  Container(web, "Web GUI", "React, TypeScript", "Витрина, корзина, оформление заказа, личный кабинет")
+  Container(mobile, "Mobile App", "Swift, Kotlin", "Те же сценарии в мобильном приложении")
+  Container(backoffice, "Панель оператора", "React, TypeScript", "Поиск заказов, очередь needs_attention, журнал аудита. API панели в примере не детализирован")
+  Container(gateway, "guiGateway", "Python, FastAPI", "API-шлюз: проверка JWT, маршрутизация, лимиты, подписи webhook, traceId")
+  Container(cms, "cmsService", "Python, FastAPI", "Корзина, заказы, статусы, профили, бизнес-правила, вызовы внешних систем")
+  ContainerDb(db, "cmsDB", "PostgreSQL 16", "Товары и остатки, корзины, заказы, платежи, история статусов, аудит")
+}
+
+System_Ext(auth, "Сервис аутентификации")
+System_Ext(pay, "Платёжный шлюз")
+System_Ext(delivery, "Служба доставки")
+System_Ext(erp, "Учётная система")
+
+' Раскладка: внешние системы — под границей решения, слева направо
+Lay_D(db, pay)
+Lay_R(pay, erp)
+Lay_R(erp, delivery)
+Lay_R(delivery, auth)
+
+Rel(buyer, web, "Использует", "HTTPS")
+Rel(buyer, mobile, "Использует")
+Rel(operator, backoffice, "Использует", "HTTPS")
+Rel(admin, backoffice, "Смотрит аудит, управляет ролями", "HTTPS")
+
+Rel(web, gateway, "A1–A11", "REST/JSON")
+Rel(mobile, gateway, "A1–A11", "REST/JSON")
+Rel(backoffice, gateway, "Поиск и обработка заказов", "REST/JSON")
+
+Rel(gateway, auth, "Проверка токена")
+Rel(gateway, cms, "Маршрутизирует запросы", "REST/JSON")
+Rel(cms, db, "Читает и пишет", "SQL")
+
+Rel(cms, pay, "E1 Создание платежа", "REST")
+Rel(pay, gateway, "W1 Результат оплаты", "webhook")
+Rel(cms, delivery, "E2 Создание отправления", "REST")
+Rel(delivery, gateway, "W2 Статус доставки", "webhook")
+Rel(erp, db, "Остатки", "синхронизация, вне решения")
+@enduml

@@ -1,0 +1,26 @@
+@startuml c4_3_components_cms
+!include <C4/C4_Component>
+LAYOUT_WITH_LEGEND()
+
+title Уровень 3. Компоненты контейнера cmsService
+
+Container(gateway, "guiGateway", "Python, FastAPI", "API-шлюз")
+ContainerDb(db, "cmsDB", "PostgreSQL 16")
+System_Ext(ext, "Платёжный шлюз и служба доставки", "Внешние системы")
+
+Container_Boundary(cms, "cmsService") {
+  Component(api, "Обработчики API", "FastAPI routers", "A1–A11, W1, W2 и запросы панели оператора")
+  Component(logic, "Бизнес-логика", "Python modules", "Корзина, заказ и его статусы (T-01…T-08), правила BR-01…BR-10")
+  Component(adapters, "Адаптеры внешних систем", "HTTP clients", "E1, E2: вызовы, таймауты, повторы")
+  Component(jobs, "Плановые задачи", "Scheduler", "Отмена по сроку оплаты, повторы доставки, очистка корзин")
+  Component(data, "Доступ к данным", "SQLAlchemy", "Таблицы cmsDB, идемпотентность, журнал аудита")
+}
+
+Rel(gateway, api, "Запросы", "REST/JSON")
+Rel(api, logic, "Вызывает")
+Rel(jobs, logic, "Вызывает")
+Rel(logic, adapters, "Вызывает")
+Rel(logic, data, "Читает и пишет")
+Rel(data, db, "SQL")
+Rel(adapters, ext, "E1, E2", "REST")
+@enduml

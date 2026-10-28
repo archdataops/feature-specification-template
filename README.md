@@ -43,6 +43,7 @@
 | 11 | Аудит, системные события и логирование | [template/11](template/11_audit_logging.md) | [example/11](example/11_audit_logging.md) |
 | 12 | Критерии приёмки | [template/12](template/12_acceptance_criteria.md) | [example/12](example/12_acceptance_criteria.md) |
 | 13 | Матрица трассируемости | [template/13](template/13_traceability.md) | [example/13](example/13_traceability.md) |
+| C4 | Архитектура: контекст, контейнеры, компоненты, код | [template/c4](template/c4/README.md) | [example/c4](example/c4/README.md) |
 
 Как пользоваться шаблоном, порядок заполнения и соглашения об ID — в [template/README.md](template/README.md).
 
@@ -69,7 +70,7 @@
 
 Через пару минут Swagger UI будет доступен по адресу `https://<аккаунт>.github.io/<репозиторий>/`. Ссылка также появится в **Settings → Pages** и в правой колонке репозитория (**Deployments**).
 
-Что делать после перевода репозитория в приват и обратно, как проверить состояние и что делать при ошибках — в [docs/publishing.md](docs/publishing.md). Короткий путь: `tools/publish_pages.sh`.
+Что делать после перевода репозитория в приват и обратно, как проверить состояние и что делать при ошибках — в [docs/publishing.md](docs/publishing.md). Короткий путь: `tools/publish_pages.sh` — включает Pages, запускает публикацию и показывает её ход.
 
 </details>
 
@@ -82,7 +83,7 @@ Workflow [`.github/workflows/spec-checks.yml`](.github/workflows/spec-checks.yml
 | Трассируемость примера | Все ID и коды ошибок согласованы, у требований есть проверки, методы раздела 5 совпадают с `openapi.yaml` |
 | Трассируемость шаблона | Пустой шаблон остаётся согласованным |
 | Линтер OpenAPI (Redocly) | Спецификация валидна, примеры соответствуют схемам |
-| Синтаксис PlantUML | Все диаграммы в `diagrams/` собираются без ошибок |
+| Синтаксис PlantUML | Все диаграммы в `diagrams/` и `diagrams/c4/` собираются без ошибок |
 | Публикация Swagger UI | Только из `main` и только для публичного репозитория |
 
 ## Автоматическая проверка согласованности
@@ -122,9 +123,9 @@ python3 tools/check_traceability.py example --openapi api/openapi.yaml   # пл�
 ## Структура репозитория
 
 ```text
-example/    заполненный пример (разделы 01–13)
-template/   пустой шаблон с подсказками и минимальным набором связанных ID
-diagrams/   исходники PlantUML (.puml) и отрендеренные SVG
+example/    заполненный пример (разделы 01–13, архитектура C4 в example/c4/)
+template/   пустой шаблон с подсказками и минимальным набором связанных ID, C4 в template/c4/
+diagrams/   исходники PlantUML (.puml) и отрендеренные SVG, в diagrams/c4/ — диаграммы C4
 tools/      скрипт проверки трассируемости
 api/        спецификация OpenAPI
 docs/       страница Swagger UI для GitHub Pages
