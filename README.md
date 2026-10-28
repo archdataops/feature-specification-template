@@ -27,32 +27,37 @@
 
 ## Состав
 
-| № | Раздел | Пример | Статус |
+| № | Раздел | Шаблон | Пример |
 |---|--------|--------|--------|
-| 01 | Описание решения, цели, сущности | [example/01](example/01_solution_overview.md) | Готов, требует разделения на шаблон и пример |
-| 02 | Бизнес-требования | [example/02](example/02_business_requirements.md) | Готов, требует разделения на шаблон и пример |
-| 03 | Функциональные и нефункциональные требования | [example/03](example/03_solution_requirements.md) | Готов |
-| 04 | Варианты использования | [example/04](example/04_use_cases.md) | Готов, требует разделения на шаблон и пример |
-| 04.1 | Сценарий варианта использования | [example/04.1](example/04.1_use_case_scenario.md) | Готов, требует разделения на шаблон и пример |
-| 05 | Интеграционное взаимодействие, API, обработка ошибок | [example/05](example/05_integration_api.md) | Готов |
-| 06 | Компоненты | [example/06](example/06_components.md) | Готов |
-| 07 | Структура данных | [example/07](example/07_data_structure.md) | Готов |
-| 08 | Статусная модель | [example/08](example/08_status_model.md) | Готов |
-| 09 | Ролевая модель и матрица доступа | [example/09](example/09_roles_access.md) | Готов |
-| 10 | Бизнес-правила, ограничения и проверки | [example/10](example/10_business_rules.md) | Готов |
-| 11 | Аудит, системные события и логирование | [example/11](example/11_audit_logging.md) | Готов |
-| 12 | Критерии приёмки | [example/12](example/12_acceptance_criteria.md) | Готов |
-| 13 | Матрица трассируемости | [example/13](example/13_traceability.md) | Готов |
+| 01 | Описание решения, цели, сущности | [template/01](template/01_solution_overview.md) | [example/01](example/01_solution_overview.md) |
+| 02 | Бизнес-требования | [template/02](template/02_business_requirements.md) | [example/02](example/02_business_requirements.md) |
+| 03 | Функциональные и нефункциональные требования | [template/03](template/03_solution_requirements.md) | [example/03](example/03_solution_requirements.md) |
+| 04 | Варианты использования | [template/04](template/04_use_cases.md) | [example/04](example/04_use_cases.md) |
+| 04.1 | Сценарий варианта использования | [template/04.1](template/04.1_use_case_scenario.md) | [example/04.1](example/04.1_use_case_scenario.md) |
+| 05 | Интеграционное взаимодействие, API, обработка ошибок | [template/05](template/05_integration_api.md) | [example/05](example/05_integration_api.md) |
+| 06 | Компоненты | [template/06](template/06_components.md) | [example/06](example/06_components.md) |
+| 07 | Структура данных | [template/07](template/07_data_structure.md) | [example/07](example/07_data_structure.md) |
+| 08 | Статусная модель | [template/08](template/08_status_model.md) | [example/08](example/08_status_model.md) |
+| 09 | Ролевая модель и матрица доступа | [template/09](template/09_roles_access.md) | [example/09](example/09_roles_access.md) |
+| 10 | Бизнес-правила, ограничения и проверки | [template/10](template/10_business_rules.md) | [example/10](example/10_business_rules.md) |
+| 11 | Аудит, системные события и логирование | [template/11](template/11_audit_logging.md) | [example/11](example/11_audit_logging.md) |
+| 12 | Критерии приёмки | [template/12](template/12_acceptance_criteria.md) | [example/12](example/12_acceptance_criteria.md) |
+| 13 | Матрица трассируемости | [template/13](template/13_traceability.md) | [example/13](example/13_traceability.md) |
 
-В работе: пустой шаблон с подсказками по заполнению (`template/`), спецификация OpenAPI (`api/openapi.yaml`) с публикацией в Swagger UI, автоматический рендер диаграмм и проверка спецификации в GitHub Actions.
+Как пользоваться шаблоном, порядок заполнения и соглашения об ID — в [template/README.md](template/README.md).
+
+В работе: спецификация OpenAPI (`api/openapi.yaml`) с публикацией в Swagger UI, автоматический рендер диаграмм и проверка спецификации в GitHub Actions.
 
 ## Автоматическая проверка согласованности
 
 Скрипт проверяет, что все ID, на которые ссылаются разделы, определены, и что у каждого требования, бизнес-правила и метода API есть покрытие:
 
 ```bash
-python3 tools/check_traceability.py
+python3 tools/check_traceability.py            # проверить пример
+python3 tools/check_traceability.py template   # проверить шаблон или свою спецификацию
 ```
+
+Результат для примера:
 
 ```text
 | Что проверяется             | Всего | Покрыто | Не покрыто |
@@ -70,7 +75,7 @@ python3 tools/check_traceability.py
 
 ```text
 example/    заполненный пример (разделы 01–13)
-template/   пустой шаблон с подсказками (в работе)
+template/   пустой шаблон с подсказками и минимальным набором связанных ID
 diagrams/   исходники PlantUML (.puml) и отрендеренные SVG
 tools/      скрипт проверки трассируемости
 api/        спецификация OpenAPI (в работе)

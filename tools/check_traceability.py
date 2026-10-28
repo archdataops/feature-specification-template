@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Проверка согласованности и покрытия спецификации.
 
-Читает Markdown-разделы из папки example/ и проверяет:
-  * что все упомянутые ID (FR, NFR, BR, BG, AC, T, коды ошибок) где-то определены;
+Читает Markdown-разделы из папки (по умолчанию example/) и проверяет:
+  * что все упомянутые ID (BG, FR, NFR, UC, AF, методы API, BR, T, AC, коды ошибок)
+    определены в своём разделе;
   * что у каждого ФТ, бизнес-правила и НФТ есть хотя бы один критерий приёмки;
   * что каждое ФТ есть в матрице трассируемости (раздел 13.2);
   * что у каждого метода API есть хотя бы одно ФТ (раздел 13.5);
@@ -21,7 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SPEC_DIR = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "example"
 
-ID_RE = re.compile(r"\b(?:FR|NFR|BR|BG|T)-\d+\b|\bAC-N?\d+\b")
+ID_RE = re.compile(r"\b(?:FR|NFR|BR|BG|T|AF)-\d+\b|\bAC-N?\d+\b|\bUC\d+(?:\.\d+)?\b|\b[AWE]\d{1,2}\b")
 CODE_RE = re.compile(r"`([A-Z]+(?:_[A-Z]+)+)`")
 
 
@@ -49,21 +50,24 @@ def ids_in(cell: str, kind: str) -> set[str]:
 
 
 def main() -> int:
-    s03, s05, s08 = read("03"), read("05"), read("08")
-    s10, s12, s13 = read("10"), read("12"), read("13")
-    all_text = "\n".join(p.read_text(encoding="utf-8") for p in sorted(SPEC_DIR.glob("*.md")))
+    s01, s03, s04, s041 = read("01"), read("03"), read("04"), read("04.1")
+    s05, s08, s10, s12, s13 = read("05"), read("08"), read("10"), read("12"), read("13")
+    spec_files = [p for p in sorted(SPEC_DIR.glob("*.md")) if p.name.lower() != "readme.md"]
+    all_text = "\n".join(p.read_text(encoding="utf-8") for p in spec_files)
 
     # --- Что определено --------------------------------------------------
+    bg = set(table_rows(s01, r"BG-\d+"))
     fr = set(table_rows(s03, r"FR-\d+"))
     nfr = set(table_rows(s03, r"NFR-\d+"))
+    uc = set(table_rows(s04, r"UC\d+(?:\.\d+)?"))
+    alt_flows = set(table_rows(s041, r"AF-\d+"))
     br = set(table_rows(s10, r"BR-\d+"))
-    bg = set(table_rows(s13, r"BG-\d+"))
     transitions = set(table_rows(s08, r"T-\d+"))
     ac_rows = table_rows(s12, r"AC-N?\d+")
     ac = set(ac_rows)
     api = set(table_rows(s05, r"[AWE]\d+"))
     codes = {m.group(1) for m in re.finditer(r"^\| \d{3} \| `([A-Z_]+)`", s05, re.M)}
-    defined = fr | nfr | br | bg | transitions | ac
+    defined = bg | fr | nfr | uc | alt_flows | br | transitions | ac | api
 
     errors: list[str] = []
     warnings: list[str] = []

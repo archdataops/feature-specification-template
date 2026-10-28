@@ -1,0 +1,55 @@
+@startuml 04_1_sequence
+title Сценарий UC2 «Заказ товара» на уровне бизнеса (без API)
+skinparam sequenceMessageAlign center
+
+actor "Покупатель" as user #Business
+participant "Магазин:\nвитрина" as front #Application
+participant "Магазин:\nкорзина и заказы" as shop #Application
+participant "Платёжный\nшлюз" as pay #Physical
+participant "Служба\nдоставки" as del #Physical
+
+ref over user, front : UC1 Просмотр товаров (предусловие)
+
+group UC2.1 Добавление товара в корзину
+  autonumber 1
+  user -> front : Добавление товара в корзину
+  user -> shop : Переход в корзину
+end
+
+group UC2.2 Действия со списком товаров
+  user -> shop : Просмотр позиций
+  alt
+    user -> shop : Изменение количества
+  else
+    user -> shop : Удаление позиции
+  else
+    user -> shop : Выбор позиций / «Выбрать всё»
+  end
+end
+
+group UC2 Заказ товара
+  user -> shop : Проверка итоговой суммы
+  user -> shop : Оформление заказа
+end
+
+group UC2.3 Ввод и проверка данных покупателя
+  user -> shop : Ввод контактов и адреса
+end
+
+group UC2.4 Оплата заказа
+  user -> pay : Оплата
+  pay -> shop : Результат оплаты
+  shop -> user : Подтверждение заказа
+end
+
+group UC2.5 Доставка
+  shop -> del : Передача заказа
+  autonumber stop
+  del -> user : Доставка заказа (завершение)
+  del -> shop : Заказ вручён
+end
+
+group Альтернативный путь AF-1: срок оплаты истёк
+  shop -> shop : Отмена заказа, снятие резерва
+end
+@enduml
