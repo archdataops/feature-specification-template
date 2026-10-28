@@ -1,0 +1,6 @@
+# Настройки линтера Redocly для api/openapi.yaml
+extends:
+  - recommended
+rules:
+  # В примере используется условный домен shop.example.com — это осознанно
+  no-server-example.com: off

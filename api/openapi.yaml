@@ -1,0 +1,845 @@
+openapi: 3.0.3
+info:
+  title: Онлайн-заказ в магазине смартфонов
+  version: 1.0.0
+  description: |
+    Спецификация публичного API и входящих уведомлений решения «Онлайн-заказ».
+    Соответствует [разделу 5](https://github.com/archdataops/feature-specification-template/blob/main/example/05_integration_api.md)
+    примера спецификации. Номера методов (A1…A11, W1, W2) указаны в поле `x-spec-id`
+    и совпадают с таблицей 5.3 и матрицей трассируемости.
+
+    Все ошибки возвращаются в едином формате `ErrorResponse`. Код ошибки в поле `error.code`
+    берётся из каталога ошибок раздела 5.4.
+  license:
+    name: GPL-3.0
+    url: https://www.gnu.org/licenses/gpl-3.0.html
+servers:
+  - url: https://shop.example.com
+    description: Условный адрес из примера
+tags:
+  - name: Корзина
+    description: UC2.1, UC2.2
+  - name: Заказы
+    description: UC2, UC2.4, UC2.5
+  - name: Оформление
+    description: UC2.3
+  - name: Профиль
+    description: UC2.3
+  - name: Уведомления
+    description: Входящие уведомления от внешних систем (webhook)
+security:
+  - bearerAuth: []
+
+paths:
+  /api/v1/cart:
+    get:
+      tags: [Корзина]
+      operationId: getCart
+      x-spec-id: A2
+      summary: Просмотр корзины
+      description: |
+        Возвращает корзину покупателя с актуальными ценами и остатками (FR-03, FR-08).
+        Если корзины нет, возвращает пустую корзину, а не 404.
+      responses:
+        "200":
+          description: Корзина
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Cart" }
+              example:
+                cartId: C001
+                items:
+                  - itemId: CI001
+                    productId: m1125
+                    name: Смартфон Apple iPhone 13 128GB
+                    unitPrice: 74999.00
+                    previousUnitPrice: 75999.00
+                    quantity: 1
+                    selected: true
+                    inStock: true
+                    priceChanged: true
+                selectedTotal: 74999.00
+                updatedAt: "2026-06-15T12:40:02+03:00"
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/cart/items:
+    post:
+      tags: [Корзина]
+      operationId: addCartItem
+      x-spec-id: A1
+      summary: Добавление товара в корзину
+      description: |
+        Добавляет товар в корзину. Создаёт корзину, если её нет (FR-01).
+        Если товар уже в корзине, увеличивает количество (FR-02).
+        Правила: BR-01 (не больше 10 шт.), BR-02 (не больше свободного остатка).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AddCartItemRequest" }
+            example: { productId: m1125, quantity: 1 }
+      responses:
+        "201":
+          description: Товар добавлен
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Cart" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404":
+          description: Товар снят с продажи
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example:
+                error: { code: PRODUCT_NOT_FOUND, message: Product is not available, traceId: 1a2b3c4d5e6f7a8b }
+        "409": { $ref: "#/components/responses/OutOfStock" }
+        "422": { $ref: "#/components/responses/QuantityLimitExceeded" }
+
+  /api/v1/cart/items/{itemId}:
+    parameters:
+      - $ref: "#/components/parameters/ItemId"
+    patch:
+      tags: [Корзина]
+      operationId: updateCartItem
+      x-spec-id: A3
+      summary: Изменение количества
+      description: Меняет количество товара в позиции (FR-04). Правила BR-01, BR-02, BR-08.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateCartItemRequest" }
+            example: { quantity: 2 }
+      responses:
+        "200":
+          description: Корзина после изменения
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Cart" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/CartItemNotFound" }
+        "409": { $ref: "#/components/responses/OutOfStock" }
+        "422": { $ref: "#/components/responses/QuantityLimitExceeded" }
+    delete:
+      tags: [Корзина]
+      operationId: deleteCartItem
+      x-spec-id: A4
+      summary: Удаление позиции
+      description: Удаляет позицию из корзины (FR-05).
+      responses:
+        "204":
+          description: Позиция удалена
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/CartItemNotFound" }
+
+  /api/v1/cart/selection:
+    patch:
+      tags: [Корзина]
+      operationId: updateCartSelection
+      x-spec-id: A5
+      summary: Выбор позиций
+      description: |
+        Отмечает позиции для заказа (FR-06, FR-07). Если `itemIds` не передан,
+        действие применяется ко всем позициям («Выбрать всё»).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SelectionRequest" }
+            example: { selected: true }
+      responses:
+        "200":
+          description: Корзина после изменения
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Cart" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/CartItemNotFound" }
+
+  /api/v1/orders:
+    post:
+      tags: [Заказы]
+      operationId: createOrder
+      x-spec-id: A6
+      summary: Создание заказа
+      description: |
+        Создаёт заказ из выбранных позиций корзины, резервирует товар и фиксирует цены
+        (FR-09, FR-10, FR-11). Правила BR-02, BR-03, BR-04, BR-10.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateOrderRequest" }
+            example: { expectedTotal: 216988.00 }
+      responses:
+        "201":
+          description: Заказ создан (или возвращён ранее созданный при повторе с тем же ключом)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+              example:
+                orderId: O001
+                status: created
+                items:
+                  - { productId: m1125, name: Смартфон Apple iPhone 13 128GB, unitPrice: 75999.00, quantity: 2 }
+                  - { productId: m2201, name: Смартфон Samsung Galaxy S23 128GB, unitPrice: 64990.00, quantity: 1 }
+                total: 216988.00
+                contact: { name: Дмитрий, phone: "+78125096500", email: example@example.com }
+                expiresAt: "2026-06-15T13:14:00+03:00"
+                createdAt: "2026-06-15T12:44:00+03:00"
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "409":
+          description: Товара не хватает (BR-02) или изменилась сумма (BR-03)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                outOfStock:
+                  summary: OUT_OF_STOCK
+                  value:
+                    error:
+                      code: OUT_OF_STOCK
+                      message: Requested quantity exceeds available stock
+                      details: [{ itemId: CI001, requested: 2, available: 1 }]
+                      traceId: 7f3c9a2e5b1d4f08
+                priceChanged:
+                  summary: PRICE_CHANGED
+                  value:
+                    error:
+                      code: PRICE_CHANGED
+                      message: Order total differs from expectedTotal
+                      details:
+                        - { expectedTotal: 216988.00, actualTotal: 214988.00 }
+                        - { productId: m1125, oldUnitPrice: 75999.00, newUnitPrice: 74999.00 }
+                      traceId: a91c04e7d2b84f3c
+        "422":
+          description: Нет выбранных позиций (BR-04) или ключ идемпотентности использован с другим телом (BR-10)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                noItems:
+                  summary: NO_ITEMS_SELECTED
+                  value:
+                    error: { code: NO_ITEMS_SELECTED, message: No cart items selected, traceId: 0b1c2d3e4f5a6b7c }
+                keyReused:
+                  summary: IDEMPOTENCY_KEY_REUSED
+                  value:
+                    error: { code: IDEMPOTENCY_KEY_REUSED, message: Idempotency key used with a different request body, traceId: 9d8c7b6a5f4e3d2c }
+
+  /api/v1/orders/{orderId}:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    get:
+      tags: [Заказы]
+      operationId: getOrder
+      x-spec-id: A10
+      summary: Просмотр заказа
+      description: Возвращает заказ с текущим статусом и историей статусов (FR-16, FR-20).
+      responses:
+        "200":
+          description: Заказ
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Order" }
+              example:
+                orderId: O001
+                status: paid
+                total: 216988.00
+                deliveryMethod: courier
+                items:
+                  - { productId: m1125, name: Смартфон Apple iPhone 13 128GB, unitPrice: 75999.00, quantity: 2 }
+                  - { productId: m2201, name: Смартфон Samsung Galaxy S23 128GB, unitPrice: 64990.00, quantity: 1 }
+                statusHistory:
+                  - { status: created, at: "2026-06-15T12:44:00+03:00" }
+                  - { status: awaiting_payment, at: "2026-06-15T12:48:12+03:00" }
+                  - { status: paid, at: "2026-06-15T12:49:40+03:00" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/OrderNotFound" }
+
+  /api/v1/orders/{orderId}/payment:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    post:
+      tags: [Заказы]
+      operationId: startPayment
+      x-spec-id: A9
+      summary: Инициация оплаты
+      description: |
+        Создаёт платёж в платёжном шлюзе и возвращает ссылку на платёжную страницу (FR-14).
+        Данные карты в систему магазина не попадают (NFR-09). Правила BR-05, BR-09, BR-10.
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PaymentRequest" }
+            example: { method: card }
+      responses:
+        "201":
+          description: Платёж создан
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Payment" }
+              example:
+                paymentId: P001
+                orderId: O001
+                status: pending
+                amount: 216988.00
+                confirmationUrl: https://pay.example-gateway.ru/checkout/2f9a7c1e
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/OrderNotFound" }
+        "409":
+          description: Истёк срок оплаты (BR-05) или заказ уже оплачен или отменён (BR-09)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                expired:
+                  summary: ORDER_EXPIRED
+                  value:
+                    error: { code: ORDER_EXPIRED, message: "Payment period expired, order cancelled", traceId: 5e6f7a8b9c0d1e2f }
+                transition:
+                  summary: INVALID_STATUS_TRANSITION
+                  value:
+                    error: { code: INVALID_STATUS_TRANSITION, message: Order is already paid, traceId: 3c4d5e6f7a8b9c0d }
+        "422":
+          description: Данные покупателя не проверены или ключ идемпотентности использован с другим телом
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              examples:
+                checkoutMissing:
+                  summary: CHECKOUT_DATA_MISSING
+                  value:
+                    error: { code: CHECKOUT_DATA_MISSING, message: Contact and address are not validated, traceId: 2b3c4d5e6f7a8b9c }
+                keyReused:
+                  summary: IDEMPOTENCY_KEY_REUSED
+                  value:
+                    error: { code: IDEMPOTENCY_KEY_REUSED, message: Idempotency key used with a different request body, traceId: 9d8c7b6a5f4e3d2c }
+        "502":
+          description: Платёжный шлюз вернул ошибку
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example:
+                error: { code: PAYMENT_PROVIDER_ERROR, message: Payment provider returned an error, traceId: 4d5e6f7a8b9c0d1e }
+        "504":
+          description: Платёжный шлюз не ответил за 10 секунд
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example:
+                error: { code: PAYMENT_PROVIDER_TIMEOUT, message: Payment provider timeout, traceId: 6f7a8b9c0d1e2f3a }
+
+  /api/v1/orders/{orderId}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/OrderId"
+    post:
+      tags: [Заказы]
+      operationId: cancelOrder
+      x-spec-id: A11
+      summary: Отмена заказа
+      description: |
+        Отменяет заказ до передачи в доставку (FR-21) и снимает резерв.
+        Для оплаченного заказа возвращает 409: возвраты в этой версии не поддерживаются.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CancelRequest" }
+            example: { reason: changed_mind }
+      responses:
+        "200":
+          description: Заказ отменён
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [orderId, status]
+                properties:
+                  orderId: { type: string, example: O001 }
+                  status: { $ref: "#/components/schemas/OrderStatus" }
+              example: { orderId: O001, status: cancelled }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/OrderNotFound" }
+        "409": { $ref: "#/components/responses/InvalidStatusTransition" }
+
+  /api/v1/checkout/validate:
+    post:
+      tags: [Оформление]
+      operationId: validateCheckout
+      x-spec-id: A7
+      summary: Проверка данных покупателя
+      description: Проверяет контактные данные и адрес, сохраняет их в заказ (FR-12). Правила BR-06, BR-07.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CheckoutValidateRequest" }
+            example:
+              orderId: O001
+              deliveryMethod: courier
+              contact: { name: Дмитрий, phone: "+78125096500", email: example@example.com }
+              address: { city: Санкт-Петербург, street: Невский проспект, house: "21", apartment: "14", postalCode: "191186" }
+      responses:
+        "200":
+          description: Данные корректны и сохранены в заказ
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [valid]
+                properties:
+                  valid: { type: boolean, example: true }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/OrderNotFound" }
+        "422":
+          description: Адрес вне зоны доставки (BR-07)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+              example:
+                error: { code: DELIVERY_UNAVAILABLE, message: Address is outside delivery zone, traceId: 8b9c0d1e2f3a4b5c }
+
+  /api/v1/users/me:
+    put:
+      tags: [Профиль]
+      operationId: updateProfile
+      x-spec-id: A8
+      summary: Изменение профиля
+      description: |
+        Сохраняет изменённые контактные данные в профиль (FR-13).
+        Используется `me` вместо идентификатора, чтобы нельзя было обратиться к чужому профилю (BR-08).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Contact" }
+            example: { name: Дмитрий, phone: "+78125096500", email: new.email@example.com }
+      responses:
+        "200":
+          description: Профиль обновлён
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+
+  /api/v1/webhooks/payments:
+    post:
+      tags: [Уведомления]
+      operationId: paymentWebhook
+      x-spec-id: W1
+      summary: Результат оплаты (от платёжного шлюза)
+      description: |
+        Уведомление об изменении статуса платежа (FR-15). Подпись проверяется в API-шлюзе (NFR-10).
+        Повторное уведомление с тем же `eventId` обрабатывается без изменений.
+      security:
+        - webhookSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PaymentWebhook" }
+            example:
+              eventId: evt_0f8e2a
+              paymentId: P001
+              orderId: O001
+              status: succeeded
+              amount: 216988.00
+              occurredAt: "2026-06-15T12:49:38+03:00"
+      responses:
+        "200":
+          description: Уведомление принято
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/InvalidSignature" }
+
+  /api/v1/webhooks/delivery:
+    post:
+      tags: [Уведомления]
+      operationId: deliveryWebhook
+      x-spec-id: W2
+      summary: Изменение статуса доставки (от службы доставки)
+      description: Уведомление о статусе отправления (FR-19).
+      security:
+        - webhookSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DeliveryWebhook" }
+            example:
+              eventId: dlv_77a1c3
+              shipmentId: SH-552301
+              orderId: O001
+              status: delivered
+              occurredAt: "2026-06-16T15:10:00+03:00"
+      responses:
+        "200":
+          description: Уведомление принято
+        "400": { $ref: "#/components/responses/ValidationError" }
+        "401": { $ref: "#/components/responses/InvalidSignature" }
+        "409": { $ref: "#/components/responses/InvalidStatusTransition" }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Access-токен от authService, срок жизни 15 минут (NFR-08)
+    webhookSignature:
+      type: apiKey
+      in: header
+      name: X-Signature
+      description: HMAC-SHA256 подпись тела запроса, формат `sha256=<hex>` (NFR-10)
+
+  parameters:
+    ItemId:
+      name: itemId
+      in: path
+      required: true
+      description: Идентификатор позиции корзины
+      schema: { type: string, example: CI001 }
+    OrderId:
+      name: orderId
+      in: path
+      required: true
+      description: Номер заказа
+      schema: { type: string, example: O001 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: UUID, генерируется клиентом. Повтор с тем же ключом возвращает первый результат (BR-10)
+      schema: { type: string, format: uuid, example: 3b1f6a2c-9d4e-4c51-8a7f-2e6b0c9d1a44 }
+
+  responses:
+    ValidationError:
+      description: Неверный формат или отсутствует обязательное поле (BR-06)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Request validation failed
+              details:
+                - { field: contact.phone, issue: must match +7XXXXXXXXXX }
+              traceId: c3e8a1f05b7d4e92
+    Unauthorized:
+      description: Нет токена или токен истёк
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: { code: UNAUTHORIZED, message: Access token is missing or expired, traceId: d4e5f6a7b8c9d0e1 }
+    InvalidSignature:
+      description: Неверная подпись уведомления (NFR-10)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: { code: INVALID_SIGNATURE, message: Webhook signature is invalid, traceId: e5f6a7b8c9d0e1f2 }
+    CartItemNotFound:
+      description: Позиции нет или она в чужой корзине (BR-08)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: { code: CART_ITEM_NOT_FOUND, message: Cart item not found, traceId: f6a7b8c9d0e1f2a3 }
+    OrderNotFound:
+      description: Заказа нет или он чужой (BR-08)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: { code: ORDER_NOT_FOUND, message: Order not found, traceId: a7b8c9d0e1f2a3b4 }
+    OutOfStock:
+      description: Товара на складе меньше, чем запрошено (BR-02)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error:
+              code: OUT_OF_STOCK
+              message: Requested quantity exceeds available stock
+              details: [{ itemId: CI001, requested: 3, available: 1 }]
+              traceId: 7f3c9a2e5b1d4f08
+    QuantityLimitExceeded:
+      description: Больше 10 штук одного товара (BR-01)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: { code: QUANTITY_LIMIT_EXCEEDED, message: Max 10 items per product, traceId: b8c9d0e1f2a3b4c5 }
+    InvalidStatusTransition:
+      description: Действие недопустимо в текущем статусе заказа (BR-09)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/ErrorResponse" }
+          example:
+            error: { code: INVALID_STATUS_TRANSITION, message: Transition not allowed by status model, traceId: c9d0e1f2a3b4c5d6 }
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, traceId]
+          properties:
+            code:
+              type: string
+              description: Код из каталога ошибок раздела 5.4
+              enum:
+                - VALIDATION_ERROR
+                - UNAUTHORIZED
+                - INVALID_SIGNATURE
+                - FORBIDDEN
+                - PRODUCT_NOT_FOUND
+                - CART_ITEM_NOT_FOUND
+                - ORDER_NOT_FOUND
+                - OUT_OF_STOCK
+                - PRICE_CHANGED
+                - ORDER_EXPIRED
+                - INVALID_STATUS_TRANSITION
+                - QUANTITY_LIMIT_EXCEEDED
+                - NO_ITEMS_SELECTED
+                - DELIVERY_UNAVAILABLE
+                - CHECKOUT_DATA_MISSING
+                - IDEMPOTENCY_KEY_REUSED
+                - RATE_LIMITED
+                - INTERNAL_ERROR
+                - PAYMENT_PROVIDER_ERROR
+                - SERVICE_UNAVAILABLE
+                - PAYMENT_PROVIDER_TIMEOUT
+            message:
+              type: string
+              description: Описание для разработчика, может меняться
+            details:
+              type: array
+              description: Подробности — поля с ошибками, остатки, новые цены
+              items:
+                type: object
+                additionalProperties: true
+            traceId:
+              type: string
+              description: Идентификатор запроса для поиска в логах (NFR-14)
+
+    CartItem:
+      type: object
+      required: [itemId, productId, unitPrice, quantity, selected, inStock, priceChanged]
+      properties:
+        itemId: { type: string, example: CI001 }
+        productId: { type: string, example: m1125 }
+        name: { type: string, example: Смартфон Apple iPhone 13 128GB }
+        unitPrice: { type: number, format: double, example: 75999.00 }
+        previousUnitPrice:
+          type: number
+          format: double
+          nullable: true
+          description: Цена в момент добавления, если она изменилась (FR-08)
+        quantity: { type: integer, minimum: 1, maximum: 10, example: 1 }
+        selected: { type: boolean, example: true }
+        inStock: { type: boolean, example: true }
+        priceChanged: { type: boolean, example: false }
+
+    Cart:
+      type: object
+      required: [items, selectedTotal]
+      properties:
+        cartId: { type: string, nullable: true, example: C001 }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/CartItem" }
+        selectedTotal:
+          type: number
+          format: double
+          description: Сумма по выбранным позициям (FR-07)
+          example: 75999.00
+        updatedAt: { type: string, format: date-time }
+
+    AddCartItemRequest:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId: { type: string, example: m1125 }
+        quantity: { type: integer, minimum: 1, maximum: 10, example: 1 }
+
+    UpdateCartItemRequest:
+      type: object
+      required: [quantity]
+      properties:
+        quantity: { type: integer, minimum: 1, maximum: 10, example: 2 }
+
+    SelectionRequest:
+      type: object
+      required: [selected]
+      properties:
+        selected: { type: boolean, example: true }
+        itemIds:
+          type: array
+          description: Если не передан — действие применяется ко всем позициям
+          items: { type: string }
+
+    CreateOrderRequest:
+      type: object
+      required: [expectedTotal]
+      properties:
+        expectedTotal:
+          type: number
+          format: double
+          description: Сумма, которую видел покупатель. Если не совпадает — 409 PRICE_CHANGED (BR-03)
+          example: 216988.00
+
+    OrderStatus:
+      type: string
+      description: Статус заказа (раздел 8)
+      enum: [created, awaiting_payment, paid, in_delivery, delivered, cancelled]
+
+    OrderItem:
+      type: object
+      required: [productId, unitPrice, quantity]
+      properties:
+        productId: { type: string, example: m1125 }
+        name: { type: string, example: Смартфон Apple iPhone 13 128GB }
+        unitPrice: { type: number, format: double, example: 75999.00 }
+        quantity: { type: integer, example: 2 }
+
+    StatusHistoryEntry:
+      type: object
+      required: [status, at]
+      properties:
+        status: { $ref: "#/components/schemas/OrderStatus" }
+        at: { type: string, format: date-time }
+
+    Contact:
+      type: object
+      required: [name, phone, email]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 50, example: Дмитрий }
+        phone:
+          type: string
+          pattern: '^\+7\d{10}$'
+          example: "+78125096500"
+        email: { type: string, format: email, maxLength: 254, example: example@example.com }
+
+    Address:
+      type: object
+      required: [city, street, house, postalCode]
+      properties:
+        city: { type: string, example: Санкт-Петербург }
+        street: { type: string, minLength: 2, maxLength: 255, example: Невский проспект }
+        house: { type: string, minLength: 1, maxLength: 20, example: "21" }
+        apartment: { type: string, maxLength: 20, example: "14" }
+        postalCode: { type: string, pattern: '^\d{6}$', example: "191186" }
+
+    Order:
+      type: object
+      required: [orderId, status, total]
+      properties:
+        orderId: { type: string, example: O001 }
+        status: { $ref: "#/components/schemas/OrderStatus" }
+        items:
+          type: array
+          items: { $ref: "#/components/schemas/OrderItem" }
+        total: { type: number, format: double, example: 216988.00 }
+        deliveryMethod:
+          type: string
+          enum: [courier, pickup]
+          nullable: true
+        contact:
+          type: object
+          allOf: [{ $ref: "#/components/schemas/Contact" }]
+          nullable: true
+          description: Контакты получателя. Заполняются из профиля при создании заказа (FR-11)
+        address:
+          type: object
+          allOf: [{ $ref: "#/components/schemas/Address" }]
+          nullable: true
+          description: Адрес доставки. Заполняется на шаге UC2.3
+        expiresAt:
+          type: string
+          format: date-time
+          description: Срок оплаты (BR-05)
+        createdAt: { type: string, format: date-time }
+        statusHistory:
+          type: array
+          items: { $ref: "#/components/schemas/StatusHistoryEntry" }
+
+    CheckoutValidateRequest:
+      type: object
+      required: [orderId, deliveryMethod, contact]
+      properties:
+        orderId: { type: string, example: O001 }
+        deliveryMethod: { type: string, enum: [courier, pickup] }
+        contact: { $ref: "#/components/schemas/Contact" }
+        address:
+          allOf: [{ $ref: "#/components/schemas/Address" }]
+          description: Обязателен для courier
+
+    User:
+      type: object
+      required: [userId, name, phone, email]
+      properties:
+        userId: { type: string, example: U001 }
+        name: { type: string, example: Дмитрий }
+        phone: { type: string, example: "+78125096500" }
+        email: { type: string, format: email, example: new.email@example.com }
+        updatedAt: { type: string, format: date-time }
+
+    PaymentRequest:
+      type: object
+      required: [method]
+      properties:
+        method: { type: string, enum: [card, sbp], example: card }
+
+    Payment:
+      type: object
+      required: [paymentId, orderId, status, amount]
+      properties:
+        paymentId: { type: string, example: P001 }
+        orderId: { type: string, example: O001 }
+        status:
+          type: string
+          description: Статус платежа (раздел 8.6)
+          enum: [pending, succeeded, failed, cancelled]
+        amount: { type: number, format: double, example: 216988.00 }
+        confirmationUrl: { type: string, format: uri }
+
+    CancelRequest:
+      type: object
+      properties:
+        reason: { type: string, example: changed_mind }
+
+    PaymentWebhook:
+      type: object
+      required: [eventId, paymentId, orderId, status, amount, occurredAt]
+      properties:
+        eventId: { type: string, example: evt_0f8e2a }
+        paymentId: { type: string, example: P001 }
+        orderId: { type: string, example: O001 }
+        status: { type: string, enum: [succeeded, canceled] }
+        amount: { type: number, format: double }
+        occurredAt: { type: string, format: date-time }
+
+    DeliveryWebhook:
+      type: object
+      required: [eventId, shipmentId, orderId, status, occurredAt]
+      properties:
+        eventId: { type: string, example: dlv_77a1c3 }
+        shipmentId: { type: string, example: SH-552301 }
+        orderId: { type: string, example: O001 }
+        status: { type: string, enum: [accepted, in_transit, delivered, failed] }
+        occurredAt: { type: string, format: date-time }

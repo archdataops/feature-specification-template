@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>API онлайн-заказа — Swagger UI</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui.css">
+  <style>
+    body { margin: 0; background: #fafafa; }
+    .topbar-note {
+      font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      padding: 12px 16px; background: #1f2937; color: #e5e7eb;
+    }
+    .topbar-note a { color: #93c5fd; }
+  </style>
+</head>
+<body>
+  <div class="topbar-note">
+    Спецификация API из примера
+    <a href="https://github.com/archdataops/feature-specification-template">feature-specification-template</a>.
+    Номера методов (A1…A11, W1, W2) совпадают с разделом 5 и матрицей трассируемости.
+  </div>
+  <div id="swagger-ui"></div>
+
+  <script src="https://unpkg.com/swagger-ui-dist@5.17.14/swagger-ui-bundle.js" crossorigin></script>
+  <script>
+    // На GitHub Pages файл спецификации лежит рядом со страницей (его копирует workflow).
+    // При локальном просмотре из папки репозитория — в ../api/.
+    async function specUrl() {
+      try {
+        const r = await fetch("openapi.yaml", { method: "HEAD" });
+        if (r.ok) return "openapi.yaml";
+      } catch (e) { /* файла рядом нет */ }
+      return "../api/openapi.yaml";
+    }
+
+    specUrl().then((url) => {
+      window.ui = SwaggerUIBundle({
+        url,
+        dom_id: "#swagger-ui",
+        deepLinking: true,
+        docExpansion: "list",
+        defaultModelsExpandDepth: 0,
+        displayRequestDuration: true,
+        supportedSubmitMethods: [] // «Try it out» выключен: сервера из примера не существует
+      });
+    });
+  </script>
+</body>
+</html>

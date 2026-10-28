@@ -18,6 +18,19 @@ python3 tools/check_traceability.py specs/my-feature   # проверить св
 
 Аргумент — путь к папке с разделами. Если его нет, проверяется `example/`.
 
+### Сверка с OpenAPI
+
+С флагом `--openapi` скрипт дополнительно сверяет раздел 5 с машиночитаемой спецификацией:
+
+```bash
+python3 tools/check_traceability.py example --openapi api/openapi.yaml
+```
+
+- каждый публичный метод и webhook из таблицы 5.3 (`Ax`, `Wx`) должен быть в OpenAPI с полем `x-spec-id`, и наоборот;
+- коды ошибок из каталога 5.4 должны совпадать с перечислением `error.code` в схеме `ErrorResponse`.
+
+Исходящие вызовы во внешние системы (`Ex`) не сверяются: это чужой API, его нет в нашей спецификации.
+
 Код возврата:
 - `0` — ошибок нет (предупреждения могут быть);
 - `1` — найдены ошибки.
@@ -123,13 +136,14 @@ python3 tools/check_traceability.py specs/my-feature   # проверить св
 
 ## Использование в CI
 
-Минимальный шаг для GitHub Actions:
+В репозитории скрипт уже запускается в [`.github/workflows/spec-checks.yml`](../.github/workflows/spec-checks.yml) при каждом пуше:
 
 ```yaml
-- name: Проверка трассируемости
-  run: |
-    python3 tools/check_traceability.py example
-    python3 tools/check_traceability.py template
+- name: Трассируемость примера и сверка с OpenAPI
+  run: python3 tools/check_traceability.py example --openapi api/openapi.yaml
+
+- name: Трассируемость пустого шаблона
+  run: python3 tools/check_traceability.py template
 ```
 
-Если любая из команд вернёт 1, шаг и весь workflow завершатся с ошибкой.
+Если любая из команд вернёт 1, шаг и весь workflow завершатся с ошибкой, и в pull request будет видно, что спецификация разошлась.

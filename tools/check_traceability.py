@@ -15,12 +15,20 @@
 
 from __future__ import annotations
 
+import argparse
 import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SPEC_DIR = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "example"
+
+_parser = argparse.ArgumentParser(description="Проверка трассируемости спецификации")
+_parser.add_argument("spec_dir", nargs="?", default=str(ROOT / "example"),
+                     help="папка с разделами спецификации (по умолчанию example/)")
+_parser.add_argument("--openapi", metavar="FILE",
+                     help="сверить методы и коды ошибок раздела 5 с файлом OpenAPI")
+ARGS = _parser.parse_args()
+SPEC_DIR = Path(ARGS.spec_dir)
 
 ID_RE = re.compile(r"\b(?:FR|NFR|BR|BG|T|AF)-\d+\b|\bAC-N?\d+\b|\bUC\d+(?:\.\d+)?\b|\b[AWE]\d{1,2}\b")
 CODE_RE = re.compile(r"`([A-Z]+(?:_[A-Z]+)+)`")
@@ -123,6 +131,23 @@ def main() -> int:
     for t in sorted(transitions):
         if t not in matrix_text:
             warnings.append(f"Переход {t} не упомянут в матрице 13.2")
+
+    # --- 6. Сверка с OpenAPI (если передан --openapi) ----------------------
+    if ARGS.openapi:
+        oas_text = Path(ARGS.openapi).read_text(encoding="utf-8")
+        oas_ids = set(re.findall(r"^\s*x-spec-id:\s*([AW]\d+)\s*$", oas_text, re.M))
+        doc_ids = {a for a in api if a[0] in "AW"}  # E* — вызовы внешних систем, их нет в нашем API
+        for a in sorted(doc_ids - oas_ids):
+            errors.append(f"Метод {a} есть в разделе 5.3, но не найден в {ARGS.openapi} (x-spec-id)")
+        for a in sorted(oas_ids - doc_ids):
+            errors.append(f"Метод {a} есть в {ARGS.openapi}, но не описан в разделе 5.3")
+        enum_block = re.search(r"code:\s*\n(?:.*\n)*?\s*enum:\s*\n((?:\s*- [A-Z_]+\s*\n)+)", oas_text)
+        oas_codes = set(re.findall(r"- ([A-Z_]+)", enum_block.group(1))) if enum_block else set()
+        for c in sorted(codes - oas_codes):
+            errors.append(f"Код ошибки {c} есть в каталоге 5.4, но не в перечислении ErrorResponse в OpenAPI")
+        for c in sorted(oas_codes - codes):
+            errors.append(f"Код ошибки {c} есть в OpenAPI, но не в каталоге 5.4")
+        print(f"OpenAPI: {ARGS.openapi} — методов {len(oas_ids)}, кодов ошибок {len(oas_codes)}")
 
     # --- Отчёт ------------------------------------------------------------
     def line(name: str, total: int, missing: int) -> str:
