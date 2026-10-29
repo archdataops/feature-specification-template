@@ -1,5 +1,10 @@
 # feature-specification-template
 
+[![Swagger UI](https://img.shields.io/badge/API-Swagger%20UI-85EA2D?logo=swagger&logoColor=black)](https://archdataops.github.io/feature-specification-template/)
+[![Spec checks](https://github.com/archdataops/feature-specification-template/actions/workflows/spec-checks.yml/badge.svg)](https://github.com/archdataops/feature-specification-template/actions/workflows/spec-checks.yml)
+
+**📖 [Открыть API примера в Swagger UI](https://archdataops.github.io/feature-specification-template/)**
+
 Шаблон для описания фичи «от бизнес-требований до API, данных и критериев приёмки» и полностью заполненный пример: онлайн-заказ в магазине смартфонов.
 
 Шаблон собран по опыту работы с описанием фич в нескольких крупных компаниях (банки, ритейл, телеком) и обобщён: все формулировки и пример написаны с нуля и не повторяют внутренние стандарты конкретных компаний.
